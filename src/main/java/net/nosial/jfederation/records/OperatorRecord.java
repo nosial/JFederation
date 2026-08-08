@@ -1,0 +1,28 @@
+package net.nosial.jfederation.records;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+/**
+ * Immutable record representing an operator (user) in the Federation server.
+ *
+ * @param uuid the unique operator identifier
+ * @param accessToken the operator's access token for API authentication
+ * @param name the display name of the operator
+ * @param disabled whether the operator account is disabled
+ * @param clientPermissions whether the operator has client-level permissions
+ * @param managementPermissions whether the operator has management-level permissions
+ * @param operatorPermissions whether the operator has operator-level permissions
+ * @param created the creation timestamp (Unix epoch seconds)
+ * @param updated the last-updated timestamp (Unix epoch seconds)
+ */
+public record OperatorRecord(
+    @JsonProperty("uuid") String uuid,
+    @JsonProperty("access_token") String accessToken,
+    @JsonProperty("name") String name,
+    @JsonProperty("disabled") boolean disabled,
+    @JsonProperty("client_permissions") boolean clientPermissions,
+    @JsonProperty("management_permissions") boolean managementPermissions,
+    @JsonProperty("operator_permissions") boolean operatorPermissions,
+    @JsonProperty("created") long created,
+    @JsonProperty("updated") long updated
+) { }
