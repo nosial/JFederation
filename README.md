@@ -55,37 +55,6 @@ logging (Logback is bundled as the runtime implementation).
 
 ## Installation
 
-### Via GitHub Packages
-
-The `<distributionManagement>` section of the `pom.xml` publishes artifacts to the GitHub Packages Maven registry at
-`https://maven.pkg.github.com/nosial/JFederation` when `mvn deploy` runs (see the `publish` target in the [Makefile](Makefile)).
-Publishing requires a `server` entry with the id `github` in `~/.m2/settings.xml`, authenticated with a GitHub PAT carrying the
-`write:packages` scope.
-
-Add the repository and the dependency to your `pom.xml`; consuming from the registry requires a
-GitHub PAT with the `read:packages` scope:
-
-```xml
-<repositories>
-    <repository>
-        <id>github</id>
-        <url>https://maven.pkg.github.com/nosial/JFederation</url>
-    </repository>
-</repositories>
-
-<dependencies>
-    <dependency>
-        <groupId>net.nosial</groupId>
-        <artifactId>jfederation</artifactId>
-        <version>1.0.0</version>
-    </dependency>
-</dependencies>
-```
-
-Gradle users can add the same repository with
-`maven { url = uri("https://maven.pkg.github.com/nosial/JFederation") }` and the dependency via
-`implementation("net.nosial:jfederation:1.0.0")`.
-
 ### Via JitPack
 
 The project is hosted on [GitHub](https://github.com/nosial/JFederation), so Maven projects can pull
