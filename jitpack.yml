@@ -1,0 +1,7 @@
+jdk:
+  - openjdk24
+before_install:
+  - sdk install java 24-tem
+  - sdk use java 24-tem
+  - sdk install maven
+  - mvn -v
