@@ -15,4 +15,4 @@ clean:
 	mvn -B clean
 
 publish:
-	mvn -B -Prelease deploy -DskipTests
+	mvn -B deploy -DskipTests
