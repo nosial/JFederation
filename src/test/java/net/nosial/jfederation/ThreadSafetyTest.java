@@ -586,14 +586,19 @@ class ThreadSafetyTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("confidential-toggle-" + randomUuid().substring(0, 6) + ".com", "conf_test");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Confidential toggle test", "test", "conf_toggle");
-        createdEvidenceRecords.add(evidenceUuid);
+        List<String> evidenceUuids = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            evidenceUuids.add(client.submitEvidence(entityUuid, "Confidential toggle test " + i, "test", "conf_toggle"));
+        }
+        createdEvidenceRecords.addAll(evidenceUuids);
 
         ExecutorService executor = Executors.newFixedThreadPool(4);
         CountDownLatch latch = new CountDownLatch(1);
         AtomicInteger successCount = new AtomicInteger(0);
+        ConcurrentLinkedQueue<Throwable> errors = new ConcurrentLinkedQueue<>();
 
         for (int i = 0; i < 4; i++) {
+            String evidenceUuid = evidenceUuids.get(i);
             executor.submit(() -> {
                 try {
                     latch.await();
@@ -606,8 +611,8 @@ class ThreadSafetyTest extends FederationClientTestBase {
                     assertNotNull(rec1);
                     assertNotNull(rec2);
                     successCount.incrementAndGet();
-                } catch (Exception e) {
-                    fail("Confidentiality toggle failed: " + e.getMessage());
+                } catch (Throwable t) {
+                    errors.add(t);
                 }
             });
         }
@@ -615,6 +620,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
         latch.countDown();
         executor.shutdown();
         assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+        assertTrue(errors.isEmpty(), "Confidentiality toggle failed: " + errors);
         assertEquals(4, successCount.get());
     }
 
