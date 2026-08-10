@@ -26,6 +26,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         assertFalse(rec.managementPermissions());
         assertFalse(rec.operatorPermissions());
         assertFalse(rec.clientPermissions());
+        assertFalse(rec.autoAssign());
         assertNotNull(uuidCreated.accessToken());
         assertNull(rec.accessToken(), "Access token should be redacted in OperatorRecord");
     }
@@ -198,6 +199,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         assertFalse(op.managementPermissions());
         assertFalse(op.operatorPermissions());
         assertFalse(op.clientPermissions());
+        assertFalse(op.autoAssign());
         assertFalse(op.disabled());
         assertNotNull(uuidCreated.accessToken());
         assertNull(op.accessToken(), "Access token should be redacted in OperatorRecord");
@@ -205,10 +207,15 @@ class OperatorsClientTest extends FederationClientTestBase {
         client.setManagementPermissions(uuid, true);
         client.setOperatorPermissions(uuid, true);
         client.setClientPermissions(uuid, true);
+        client.setAutoAssign(uuid, true);
         OperatorRecord updated = client.getOperator(uuid);
         assertTrue(updated.managementPermissions());
         assertTrue(updated.operatorPermissions());
         assertTrue(updated.clientPermissions());
+        assertTrue(updated.autoAssign());
+
+        client.setAutoAssign(uuid, false);
+        assertFalse(client.getOperator(uuid).autoAssign());
 
         client.disableOperator(uuid);
         assertTrue(client.getOperator(uuid).disabled());
@@ -322,6 +329,40 @@ class OperatorsClientTest extends FederationClientTestBase {
     }
 
     @Test
+    void testSetAutoAssign() {
+        String uuid = client.createOperator("auto_assign_test_" + randomUuid().substring(0, 8)).uuid();
+        createdOperators.add(uuid);
+
+        assertFalse(client.getOperator(uuid).autoAssign());
+
+        client.setAutoAssign(uuid, true);
+        assertTrue(client.getOperator(uuid).autoAssign());
+
+        client.setAutoAssign(uuid, false);
+        assertFalse(client.getOperator(uuid).autoAssign());
+    }
+
+    @Test
+    void testSetAutoAssignRequiresOperatorPermissions() {
+        FederationClient clientOnly = createLimitedOperator("auto_assign_client_only", true);
+        String fakeUuid = "00000000-0000-0000-0000-000000000000";
+
+        expectRequestFailure(() -> clientOnly.setAutoAssign(fakeUuid, true), 403);
+        clientOnly.close();
+    }
+
+    @Test
+    void testSetAutoAssignEmptyUuid() {
+        assertThrows(IllegalArgumentException.class, () -> client.setAutoAssign("", true));
+    }
+
+    @Test
+    void testSetAutoAssignNonExistentOperator() {
+        assertThrows(FederationClientException.class,
+            () -> client.setAutoAssign("00000000-0000-0000-0000-000000000000", true));
+    }
+
+    @Test
     void testOperatorAccessTokenIntegrity() {
         OperatorCreated uuidCreated = client.createOperator("token_test_" + randomUuid().substring(0, 8));
         String uuid = uuidCreated.uuid();
@@ -358,6 +399,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         expectRequestFailure(() -> anon.setOperatorPermissions(fakeUuid, true), new int[]{401, 403});
         expectRequestFailure(() -> anon.setManagementPermissions(fakeUuid, true), new int[]{401, 403});
         expectRequestFailure(() -> anon.setClientPermissions(fakeUuid, true), new int[]{401, 403});
+        expectRequestFailure(() -> anon.setAutoAssign(fakeUuid, true), new int[]{401, 403});
         expectRequestFailure(() -> anon.generateOperatorAccessToken(fakeUuid), new int[]{401, 403});
         expectRequestFailure(() -> anon.listOperators(1, 10), new int[]{401, 403});
         anon.close();
@@ -482,6 +524,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         expectRequestFailure(() -> attacker.setOperatorPermissions(root.uuid(), false), 403);
         expectRequestFailure(() -> attacker.setManagementPermissions(root.uuid(), false), 403);
         expectRequestFailure(() -> attacker.setClientPermissions(root.uuid(), false), 403);
+        expectRequestFailure(() -> attacker.setAutoAssign(root.uuid(), false), 403);
         expectRequestFailure(() -> attacker.generateOperatorAccessToken(root.uuid()), 403);
         attacker.close();
     }

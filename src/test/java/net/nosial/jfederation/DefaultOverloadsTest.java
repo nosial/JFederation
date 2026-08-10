@@ -18,7 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests the default-argument overloads added for parity with the PHP FederationClient,
+ * Tests the default-argument overloads added for parity with the specification,
  * where trailing parameters are optional.
  */
 class DefaultOverloadsTest extends FederationClientTestBase {

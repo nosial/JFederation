@@ -123,6 +123,42 @@ class ReportsClientTest extends FederationClientTestBase {
     }
 
     @Test
+    void testListReportEvidenceRecords() {
+        String entityUuid = client.pushEntity("report-evidence.com", "report_evidence_user");
+        createdEntities.add(entityUuid);
+
+        ReportSubmission submission = client.submitReport(entityUuid, "Report with evidence", IncidentType.SPAM, null, null);
+        String reportUuid = submission.getReport().uuid();
+        String initialEvidenceUuid = submission.getEvidence().uuid();
+        createdReports.add(reportUuid);
+        createdEvidenceRecords.add(initialEvidenceUuid);
+
+        List<EvidenceRecord> evidence = client.listReportEvidenceRecords(reportUuid);
+        List<String> evidenceUuids = evidence.stream().map(EvidenceRecord::uuid).toList();
+        assertTrue(evidenceUuids.contains(initialEvidenceUuid));
+
+        String additionalEvidence = client.submitEvidence(entityUuid, "Additional evidence", "note", "additional");
+        createdEvidenceRecords.add(additionalEvidence);
+        client.addEvidenceToReport(additionalEvidence, reportUuid);
+
+        List<EvidenceRecord> updatedEvidence = client.listReportEvidenceRecords(reportUuid, 1, 10);
+        List<String> updatedUuids = updatedEvidence.stream().map(EvidenceRecord::uuid).toList();
+        assertTrue(updatedUuids.contains(initialEvidenceUuid));
+        assertTrue(updatedUuids.contains(additionalEvidence));
+    }
+
+    @Test
+    void testListReportEvidenceRecordsEmptyUuid() {
+        assertThrows(IllegalArgumentException.class, () -> client.listReportEvidenceRecords(""));
+    }
+
+    @Test
+    void testListReportEvidenceRecordsNonExistentReport() {
+        assertThrows(FederationClientException.class,
+            () -> client.listReportEvidenceRecords("00000000-0000-0000-0000-000000000000"));
+    }
+
+    @Test
     void testCloseReport() {
         String entityUuid = client.pushEntity("close-report.com", "close_user");
         createdEntities.add(entityUuid);

@@ -15,10 +15,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class EnumParityTest {
 
     @Test
-    void testAuditLogTypeWireValuesMatchPhpEnum() {
+    void testAuditLogTypeWireValuesMatchSpecificationEnum() {
         String[] expectedWireValues = {
             "OPERATOR_CREATED", "OPERATOR_DELETED", "OPERATOR_DISABLED", "OPERATOR_ENABLED",
             "OPERATOR_PERMISSIONS_CHANGED", "OPERATOR_ACCESS_TOKEN_GENERATED", "OPERATOR_NAME_CHANGED",
+            "OPERATOR_AUTO_ASSIGN_CHANGED",
             "ATTACHMENT_UPLOADED", "ATTACHMENT_DELETED",
             "EVIDENCE_SUBMITTED", "EVIDENCE_UPDATED", "EVIDENCE_DELETED",
             "REPORT_GENERATED", "REPORT_SUBMITTED", "REPORT_OPERATOR_ASSIGNED", "REPORT_CLOSED", "REPORT_DELETED",
@@ -27,9 +28,9 @@ class EnumParityTest {
             "BLACKLIST_DELETED", "BLACKLIST_LIFTED", "BLACKLIST_EXTENDED", "BLACKLIST_ATTACHMENT_ADDED",
             "OTHER"
         };
-        assertEquals(28, expectedWireValues.length);
-        assertEquals(28, AuditLogType.values().length,
-            "Java AuditLogType must cover every case of the PHP FederationLib\\Enums\\AuditLogType enum");
+        assertEquals(29, expectedWireValues.length);
+        assertEquals(29, AuditLogType.values().length,
+            "Java AuditLogType must cover every case of the specification");
 
         for (String wireValue : expectedWireValues) {
             AuditLogType parsed = Json.readValue("\"" + wireValue + "\"", AuditLogType.class);
@@ -41,7 +42,7 @@ class EnumParityTest {
     }
 
     @Test
-    void testSuggestedActionDeserializesByPhpCaseName() {
+    void testSuggestedActionDeserializesBySpecificationCaseName() {
         assertSame(SuggestedAction.BLOCK_CONTENT, Json.readValue("\"BLOCK_CONTENT\"", SuggestedAction.class));
         assertSame(SuggestedAction.TEMPORARILY_BLOCK_ENTITY, Json.readValue("\"TEMPORARILY_BLOCK_ENTITY\"", SuggestedAction.class));
         assertSame(SuggestedAction.PERMANENTLY_BLOCK_ENTITY, Json.readValue("\"PERMANENTLY_BLOCK_ENTITY\"", SuggestedAction.class));

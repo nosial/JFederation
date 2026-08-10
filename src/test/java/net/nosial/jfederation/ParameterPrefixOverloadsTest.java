@@ -11,7 +11,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Covers every overload shape made possible by the PHP client's defaulted parameters
+ * Covers every overload shape made possible by the specification client's defaulted parameters
  * that is not covered elsewhere: 0-arg lists, category-only variants, (id/query, page, limit)
  * variants, and partial submitEvidence calls.
  */
