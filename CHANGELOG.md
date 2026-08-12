@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.3] - 2026-08-12
 
+This update introduces changes from the specification
+
 ### Added
  - Added `ContentInput` record for representing evidence content (`text_content`, `note`, `tag`, `confidential`, `metadata`)
  - Added `FederationClient.scanContent()` overloads accepting a `ContentInput` or a list of `ContentInput` entries.
