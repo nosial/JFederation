@@ -146,9 +146,9 @@ class SearchTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host, "rep_entity_user");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "report content 2", IncidentType.SPAM, "search by entity", null);
+        ReportSubmission submission = client.submitReport(entityUuid, "report content 2", IncidentType.SPAM, "search by entity");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         List<ReportRecord> results = client.searchReports(entityUuid, 1, 10);
         assertNotNull(results);
@@ -577,7 +577,7 @@ class SearchTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, keyword + " report content",
             IncidentType.SPAM, keyword + " message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
         String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);

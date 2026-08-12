@@ -33,10 +33,10 @@ class ContentScanTest extends FederationClientTestBase {
 
         for (ClassificationFlag flag : ClassificationFlag.values()) {
             String text = "Training sample for " + flag.getValue() + " classification with enough words to train the Bayesian classifier effectively.";
-            var submission = trainingClient.submitReport(trainingEntityUuid, text, IncidentType.OTHER, null, null);
+            var submission = trainingClient.submitReport(trainingEntityUuid, text, IncidentType.OTHER, null);
             String reportUuid = submission.getReport().uuid();
             trainingReports.add(reportUuid);
-            trainingEvidence.add(submission.getEvidence().uuid());
+            trainingEvidence.add(submission.getEvidence().get(0).uuid());
             trainingClient.closeReport(reportUuid, flag);
         }
 
@@ -65,7 +65,7 @@ class ContentScanTest extends FederationClientTestBase {
 
     @Test
     void testScanContentBasic() {
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, null, null);
 
         assertNotNull(scanned);
         assertNotNull(scanned.getResolvedEntities());
@@ -75,7 +75,7 @@ class ContentScanTest extends FederationClientTestBase {
     @Test
     void testScanContentEmptyContent() {
         assertThrows(IllegalArgumentException.class,
-            () -> client.scanContent("", null, null, null, null));
+            () -> client.scanContent("", null, null, null));
     }
 
     @Test
@@ -83,7 +83,7 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("scan-author-uuid.com", "scan_author_uuid");
         createdEntities.add(entityUuid);
 
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
         assertNotNull(scanned);
         assertNotNull(scanned.getAuthorEntity());
@@ -98,7 +98,7 @@ class ContentScanTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         String address = id + "@" + host;
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, address, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, address, null, null);
 
         assertNotNull(scanned);
         assertNotNull(scanned.getAuthorEntity());
@@ -107,7 +107,7 @@ class ContentScanTest extends FederationClientTestBase {
 
     @Test
     void testScanContentWithInvalidAuthor() {
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, "not-a-valid-identifier", null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, "not-a-valid-identifier", null, null);
         assertNotNull(scanned);
         assertNull(scanned.getAuthorEntity());
     }
@@ -119,7 +119,7 @@ class ContentScanTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         String text = "Check out " + host + " for more information. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
         assertTrue(scanned.getResolvedEntities().size() >= 1);
@@ -136,7 +136,7 @@ class ContentScanTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         String text = "Visit https://" + host + "/path?q=test for details. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
         assertTrue(scanned.getResolvedEntities().size() >= 1);
@@ -155,7 +155,7 @@ class ContentScanTest extends FederationClientTestBase {
 
         String email = id + "@" + host;
         String text = "Contact me at " + email + " for more info. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
         assertTrue(scanned.getResolvedEntities().size() >= 1);
@@ -172,7 +172,7 @@ class ContentScanTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         String text = "Server is located at " + ip + " today. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
         assertTrue(scanned.getResolvedEntities().size() >= 1);
@@ -189,7 +189,7 @@ class ContentScanTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         String text = "The server address is " + ip + " please note it. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
         assertTrue(scanned.getResolvedEntities().size() >= 1);
@@ -216,7 +216,7 @@ class ContentScanTest extends FederationClientTestBase {
         String text = String.format("Visit %s and contact %s@%s or %s for details. %s",
             domainHost, emailId, emailHost, ip, BENIGN_SAMPLE_TEXT);
 
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
         assertTrue(scanned.getResolvedEntities().size() >= 3);
@@ -236,7 +236,7 @@ class ContentScanTest extends FederationClientTestBase {
 
         String prefix = "Before ";
         String text = prefix + host + " after";
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
         assertEquals(1, scanned.getResolvedEntities().size());
@@ -249,14 +249,14 @@ class ContentScanTest extends FederationClientTestBase {
 
     @Test
     void testScanContentWithTopK() {
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, 1, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, 1, null);
         assertNotNull(scanned);
         assertNotNull(scanned.getResolvedEntities());
     }
 
     @Test
     void testScanContentWithThreshold() {
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, null, 0.5f, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, null, 0.5f);
         assertNotNull(scanned);
         assertNotNull(scanned.getResolvedEntities());
         assertTrue(scanned.riskScore() >= 0.0);
@@ -264,7 +264,7 @@ class ContentScanTest extends FederationClientTestBase {
 
     @Test
     void testScanContentWithTopKAndThreshold() {
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, 2, 0.25f, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, 2, 0.25f);
         assertNotNull(scanned);
         assertNotNull(scanned.getResolvedEntities());
     }
@@ -275,14 +275,14 @@ class ContentScanTest extends FederationClientTestBase {
         metadata.put("source", "ContentScanTest");
         metadata.put("batch_id", "scan_" + UUID.randomUUID().toString().substring(0, 8));
 
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, null, null, metadata);
+        ScannedContent scanned = client.scanContent(new ContentInput(BENIGN_SAMPLE_TEXT, null, null, false, metadata));
         assertNotNull(scanned);
         assertNotNull(scanned.getResolvedEntities());
     }
 
     @Test
     void testScanContentClassificationMayBeNullWhenUntrained() {
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, null, null);
 
         assertNotNull(scanned);
         ContentClassification classification = scanned.getClassification();
@@ -306,7 +306,7 @@ class ContentScanTest extends FederationClientTestBase {
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
         client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
 
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
         assertNotNull(scanned);
         assertNotNull(scanned.getAuthorEntity());
@@ -325,7 +325,7 @@ class ContentScanTest extends FederationClientTestBase {
 
         client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.MALWARE, null);
 
-        ScannedContent scanned = client.scanContent("Malicious content with malware indicators and dangerous payload signatures", entityUuid, null, null, null);
+        ScannedContent scanned = client.scanContent("Malicious content with malware indicators and dangerous payload signatures", entityUuid, null, null);
 
         assertNotNull(scanned);
     }
@@ -355,7 +355,7 @@ class ContentScanTest extends FederationClientTestBase {
         String ipv6Prefix = " or v6 ";
 
         String text = urlPrefix + url + emailPrefix + email + ipv4Prefix + ipv4 + ipv6Prefix + ipv6;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
         assertTrue(scanned.getResolvedEntities().size() >= 4);
@@ -379,7 +379,7 @@ class ContentScanTest extends FederationClientTestBase {
     void testScanContentDoesNotResolveUnknownEntities() {
         String unknownHost = "unknown-domain-" + UUID.randomUUID().toString().substring(0, 8) + ".test";
         String text = "Visit " + unknownHost + " for details. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
         for (ResolvedEntity re : scanned.getResolvedEntities()) {
@@ -392,7 +392,7 @@ class ContentScanTest extends FederationClientTestBase {
         FederationClient anonymousClient = createAnonymousClient();
 
         try {
-            ScannedContent scanned = anonymousClient.scanContent(BENIGN_SAMPLE_TEXT, null, null, null, null);
+            ScannedContent scanned = anonymousClient.scanContent(BENIGN_SAMPLE_TEXT, null, null, null);
             assertNotNull(scanned);
             assertNotNull(scanned.getResolvedEntities());
         } catch (FederationClientException e) {
@@ -414,14 +414,14 @@ class ContentScanTest extends FederationClientTestBase {
         FederationClient restrictedClient = new FederationClient(serverEndpoint, token);
 
         assertThrows(FederationClientException.class,
-            () -> restrictedClient.scanContent(BENIGN_SAMPLE_TEXT, null, null, null, null));
+            () -> restrictedClient.scanContent(BENIGN_SAMPLE_TEXT, null, null, null));
     }
 
     @Test
     void testScanContentWithTrainingAndClassification() {
         for (ClassificationFlag flag : ClassificationFlag.values()) {
             String text = "Test sample for " + flag.getValue() + " classification analysis with appropriate vocabulary and phrasing.";
-            ScannedContent scanned = client.scanContent(text, null, null, null, null);
+            ScannedContent scanned = client.scanContent(text, null, null, null);
 
             assertNotNull(scanned);
             assertNotNull(scanned.getResolvedEntities());
@@ -430,7 +430,7 @@ class ContentScanTest extends FederationClientTestBase {
 
     @Test
     void testScanContentSuggestedActionNullForCleanContent() {
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, null, null, null);
 
         assertNull(scanned.suggestedAction());
         assertTrue(scanned.riskScore() >= 0.0);
@@ -449,7 +449,7 @@ class ContentScanTest extends FederationClientTestBase {
         client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.MALWARE, null);
 
         String text = "Visit " + host + " for updates. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         boolean found = false;
         for (ResolvedEntity re : scanned.getResolvedEntities()) {
@@ -480,7 +480,7 @@ class ContentScanTest extends FederationClientTestBase {
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
         client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
 
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
         assertNotNull(scanned.getAuthorEntity());
         assertTrue(scanned.getAuthorEntity().getActiveBlacklists().size() >= 1);
@@ -502,7 +502,7 @@ class ContentScanTest extends FederationClientTestBase {
 
         client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, null);
 
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
         assertNotNull(scanned.getAuthorEntity());
         assertTrue(scanned.getAuthorEntity().getActiveBlacklists().size() >= 1);
@@ -527,7 +527,7 @@ class ContentScanTest extends FederationClientTestBase {
         client.blacklistEntity(entityUuid, tempEvidence, IncidentType.SPAM, expires);
         client.blacklistEntity(entityUuid, permEvidence, IncidentType.MALWARE, null);
 
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
         assertNotNull(scanned.getAuthorEntity());
         assertEquals(2, scanned.getAuthorEntity().getActiveBlacklists().size());
@@ -552,7 +552,7 @@ class ContentScanTest extends FederationClientTestBase {
 
         client.blacklistEntity(parentUuid, evidenceUuid, IncidentType.MALWARE, null);
 
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, childUuid, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, childUuid, null, null);
 
         assertNotNull(scanned.getAuthorEntity());
         assertNotNull(scanned.getAuthorEntity().getParentEntity());
@@ -586,7 +586,7 @@ class ContentScanTest extends FederationClientTestBase {
         client.blacklistEntity(parentUuid, evidenceUuid, IncidentType.MALWARE, null);
 
         String text = "Visit " + childHost + " for updates. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         boolean found = false;
         for (ResolvedEntity re : scanned.getResolvedEntities()) {
@@ -619,7 +619,7 @@ class ContentScanTest extends FederationClientTestBase {
         client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
 
         String text = "Visit " + host + " for updates. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         boolean found = false;
         for (ResolvedEntity re : scanned.getResolvedEntities()) {
@@ -651,7 +651,7 @@ class ContentScanTest extends FederationClientTestBase {
 
         client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.MALWARE, null);
 
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
         assertEquals(SuggestedAction.PERMANENTLY_BLOCK_ENTITY, scanned.suggestedAction());
         assertEquals(100.0, scanned.riskScore(), 0.001);
@@ -669,7 +669,7 @@ class ContentScanTest extends FederationClientTestBase {
         client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.MALWARE, null);
 
         String text = "Visit " + host + " for updates. " + BENIGN_SAMPLE_TEXT;
-        ScannedContent scanned = client.scanContent(text, null, null, null, null);
+        ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertTrue(scanned.riskScore() >= 60.0);
 
@@ -684,7 +684,7 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("scan-rule-keys.com", "scan_rule_keys");
         createdEntities.add(entityUuid);
 
-        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null, null);
+        ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
         Map<String, Double> results = scanned.scanResults();
         assertNotNull(results);
 

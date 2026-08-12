@@ -136,7 +136,7 @@ class SortByOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "By overload operator reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
         String selfUuid = client.getSelf().uuid();
 
         List<ReportRecord> opened = client.listOperatorReports(selfUuid, 1, 50, "OPENED", "created");
@@ -149,7 +149,7 @@ class SortByOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "By overload assigned reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
         String selfUuid = client.getSelf().uuid();
         client.assignOperatorToReport(reportUuid, selfUuid);
 
@@ -202,7 +202,7 @@ class SortByOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "By overload entity reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         List<ReportRecord> all = client.listEntityReports(entityUuid);
         assertTrue(all.stream().anyMatch(r -> reportUuid.equals(r.uuid())));
@@ -247,10 +247,10 @@ class SortByOverloadsTest extends FederationClientTestBase {
     void testSearchReportsWithByOnly() {
         String entityUuid = pushUniqueEntity("by-search-reports", "by_search_reports");
         String uniqueMessage = "by-search-report-token-" + randomUuid();
-        ReportSubmission submission = client.submitReport(entityUuid, "By overload search reports content", IncidentType.SPAM, uniqueMessage, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "By overload search reports content", IncidentType.SPAM, uniqueMessage);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         List<ReportRecord> opened = client.searchReports(uniqueMessage, 1, 50, "OPENED", "created");
         assertTrue(opened.stream().anyMatch(r -> reportUuid.equals(r.uuid())));

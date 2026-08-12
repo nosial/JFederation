@@ -66,7 +66,7 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(entityUuid, "cat overload report", IncidentType.SPAM, "cat overload message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
         assertTrue(client.listReports(1, 100, "OPENED").stream()
             .anyMatch(r -> r.uuid().equals(submission.getReport().uuid())));
         assertTrue(client.listReports(1, 100, "OPENED", "created").stream()
@@ -91,7 +91,7 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(entityUuid, "entity sublist report", IncidentType.SPAM, "entity sublist message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         assertTrue(client.listEntityBlacklistRecords(entityUuid, 1, 100).stream()
             .anyMatch(b -> b.uuid().equals(blacklistUuid)));
@@ -119,7 +119,7 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(entityUuid, "operator sublist report", IncidentType.SPAM, "operator sublist message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
         client.assignOperatorToReport(submission.getReport().uuid(), selfUuid);
 
         assertTrue(client.listOperatorEvidence(selfUuid).stream()
@@ -168,7 +168,7 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(entityUuid, keyword + " report", IncidentType.SPAM, keyword + " message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         OperatorCreated operatorUuidCreated = client.createOperator(keyword + "_operator");
         String operatorUuid = operatorUuidCreated.uuid();

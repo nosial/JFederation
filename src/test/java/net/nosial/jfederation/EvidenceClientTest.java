@@ -291,7 +291,7 @@ class EvidenceClientTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Report for evidence linking", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         String standaloneEvidenceUuid = client.submitEvidence(entityUuid, "Standalone evidence", "Note", "standalone");
         createdEvidenceRecords.add(standaloneEvidenceUuid);
@@ -337,11 +337,11 @@ class EvidenceClientTest extends FederationClientTestBase {
 
         ReportSubmission reportA = client.submitReport(entityUuid, "Report A", IncidentType.SPAM);
         createdReports.add(reportA.getReport().uuid());
-        createdEvidenceRecords.add(reportA.getEvidence().uuid());
+        createdEvidenceRecords.add(reportA.getEvidence().get(0).uuid());
 
         ReportSubmission reportB = client.submitReport(entityUuid, "Report B", IncidentType.SCAM);
         createdReports.add(reportB.getReport().uuid());
-        createdEvidenceRecords.add(reportB.getEvidence().uuid());
+        createdEvidenceRecords.add(reportB.getEvidence().get(0).uuid());
 
         client.addEvidenceToReport(evidenceUuid, reportA.getReport().uuid());
         assertEquals(reportA.getReport().uuid(), client.getEvidenceRecord(evidenceUuid).report());

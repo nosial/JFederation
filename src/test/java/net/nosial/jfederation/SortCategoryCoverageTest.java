@@ -131,7 +131,7 @@ class SortCategoryCoverageTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Operator reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
         String selfUuid = client.getSelf().uuid();
 
         List<ReportRecord> opened = client.listOperatorReports(selfUuid, 1, 50, "OPENED", "created", "DESC");
@@ -147,7 +147,7 @@ class SortCategoryCoverageTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Assigned reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
         String selfUuid = client.getSelf().uuid();
         client.assignOperatorToReport(reportUuid, selfUuid);
 
@@ -186,7 +186,7 @@ class SortCategoryCoverageTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Entity reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         List<ReportRecord> opened = client.listEntityReports(entityUuid, 1, 50, "OPENED", "created", "DESC");
         assertTrue(opened.stream().anyMatch(r -> reportUuid.equals(r.uuid())));
@@ -215,10 +215,10 @@ class SortCategoryCoverageTest extends FederationClientTestBase {
     void testSearchReportsWithCategoryAndSort() {
         String entityUuid = pushUniqueEntity("search-reports", "search_reports");
         String uniqueMessage = "search-report-token-" + randomUuid();
-        ReportSubmission submission = client.submitReport(entityUuid, "Search reports content", IncidentType.SPAM, uniqueMessage, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Search reports content", IncidentType.SPAM, uniqueMessage);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         List<ReportRecord> opened = client.searchReports(uniqueMessage, 1, 50, "OPENED", "created", "DESC");
         assertTrue(opened.stream().anyMatch(r -> reportUuid.equals(r.uuid())));

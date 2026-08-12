@@ -3,8 +3,10 @@ package net.nosial.jfederation;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.enums.RecordType;
 import net.nosial.jfederation.records.BlacklistRecord;
+import net.nosial.jfederation.records.ContentInput;
 import net.nosial.jfederation.records.EntityRecord;
 import net.nosial.jfederation.records.EvidenceRecord;
+import net.nosial.jfederation.records.FileAttachmentRecord;
 import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.jfederation.records.ReportSubmission;
 import net.nosial.jfederation.records.ScannedContent;
@@ -33,7 +35,7 @@ class DefaultOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Report to close without classification", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         client.closeReport(reportUuid);
 
@@ -110,33 +112,34 @@ class DefaultOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Report with only a message", IncidentType.SPAM, "Custom message");
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         assertEquals("Custom message", client.getReport(reportUuid).message());
     }
 
     @Test
-    void testSubmitReportWithMessageTagAndLocalPaths() throws IOException {
+    void testSubmitReportWithMessageTagAndLocalAttachments() throws IOException {
         String entityUuid = client.pushEntity("report-paths-" + randomUuid().substring(0, 8) + ".com", "report_paths");
         createdEntities.add(entityUuid);
 
         Path firstFile = createTempFile("overload_first_", "First overload attachment");
         Path secondFile = createTempFile("overload_second_", "Second overload attachment");
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Report with local paths", IncidentType.SPAM,
-            "With paths", "overload_tag", List.of(firstFile.toString(), secondFile.toString()));
+        ReportSubmission submission = client.submitReport(entityUuid, new ContentInput("Report with local paths", null, "overload_tag"), IncidentType.SPAM,
+            "With paths");
         String reportUuid = submission.getReport().uuid();
-        String evidenceUuid = submission.getEvidence().uuid();
+        String evidenceUuid = submission.getEvidence().get(0).uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(evidenceUuid);
 
         assertEquals("With paths", client.getReport(reportUuid).message());
-        assertNotNull(submission.attachmentNodes());
-        assertEquals(2, submission.attachmentNodes().size());
 
-        List<net.nosial.jfederation.records.FileAttachmentRecord> attachments = client.getEvidenceAttachments(evidenceUuid);
+        client.uploadFileAttachment(evidenceUuid, firstFile.toString());
+        client.uploadFileAttachment(evidenceUuid, secondFile.toString());
+
+        List<FileAttachmentRecord> attachments = client.getEvidenceAttachments(evidenceUuid);
         assertEquals(2, attachments.size());
-        for (net.nosial.jfederation.records.FileAttachmentRecord attachment : attachments) {
+        for (FileAttachmentRecord attachment : attachments) {
             createdAttachments.add(attachment.uuid());
         }
     }

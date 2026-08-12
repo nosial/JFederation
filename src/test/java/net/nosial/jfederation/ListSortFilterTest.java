@@ -24,11 +24,11 @@ class ListSortFilterTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
         client.setEntityWhitelist(entityUuid, true);
 
-        List<EntityRecord> whitelisted = client.listEntities(1, 10, "WHITELISTED", "created", "ASC");
+        List<EntityRecord> whitelisted = client.listEntities(1, 100, "WHITELISTED", "created", "ASC");
         List<String> whitelistedUuids = whitelisted.stream().map(EntityRecord::uuid).toList();
         assertTrue(whitelistedUuids.contains(entityUuid));
 
-        List<EntityRecord> notWhitelisted = client.listEntities(1, 10, "NOT_WHITELISTED", "created", "DESC");
+        List<EntityRecord> notWhitelisted = client.listEntities(1, 100, "NOT_WHITELISTED", "created", "DESC");
         List<String> notWhitelistedUuids = notWhitelisted.stream().map(EntityRecord::uuid).toList();
         assertFalse(notWhitelistedUuids.contains(entityUuid));
     }
@@ -49,10 +49,10 @@ class ListSortFilterTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("sort-reports-" + randomUuid().substring(0, 8) + ".com", "sort_reports");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Sorted report", IncidentType.SPAM, null, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Sorted report", IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         List<ReportRecord> opened = client.listReports(1, 10, "OPENED", "created", "DESC");
         List<String> openedUuids = opened.stream().map(ReportRecord::uuid).toList();

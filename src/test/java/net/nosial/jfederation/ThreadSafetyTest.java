@@ -487,7 +487,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(reportEntityUuid, "Lifecycle report", IncidentType.SCAM);
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         ReportRecord report = client.getReport(submission.getReport().uuid());
         assertNotNull(report);

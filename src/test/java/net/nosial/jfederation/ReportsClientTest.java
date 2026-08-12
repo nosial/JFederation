@@ -6,6 +6,7 @@ import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.jfederation.records.ReportSubmission;
 import net.nosial.jfederation.records.BlacklistRecord;
+import net.nosial.jfederation.records.ContentInput;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.FileAttachmentRecord;
 import net.nosial.jfederation.records.UploadResult;
@@ -27,10 +28,10 @@ class ReportsClientTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         String reportMessage = "Normal content";
-        ReportSubmission submission = client.submitReport(entityUuid, "This is report content", IncidentType.SPAM, reportMessage, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "This is report content", IncidentType.SPAM, reportMessage);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         assertNotNull(submission.getReport());
         assertNotNull(submission.getEvidence());
@@ -42,7 +43,7 @@ class ReportsClientTest extends FederationClientTestBase {
     @Test
     void testSubmitReportInvalidEntity() {
         assertThrows(IllegalArgumentException.class,
-            () -> client.submitReport("", "content", IncidentType.OTHER, null, null));
+            () -> client.submitReport("", "content", IncidentType.OTHER, null));
     }
 
     @Test
@@ -50,13 +51,13 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("evidence-tag-report.com", "tag_user");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Report with evidence tag", IncidentType.SPAM, null, "initial-tag");
+        ReportSubmission submission = client.submitReport(entityUuid, new ContentInput("Report with evidence tag", null, "initial-tag"), IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
-        assertNotNull(submission.getEvidence().tag());
-        assertEquals("initial-tag", submission.getEvidence().tag());
+        assertNotNull(submission.getEvidence().get(0).tag());
+        assertEquals("initial-tag", submission.getEvidence().get(0).tag());
     }
 
     @Test
@@ -66,10 +67,10 @@ class ReportsClientTest extends FederationClientTestBase {
 
         String[] reportUuids = new String[3];
         for (int i = 0; i < 3; i++) {
-            ReportSubmission submission = client.submitReport(entityUuid, "List report " + i, IncidentType.OTHER, null, null);
+            ReportSubmission submission = client.submitReport(entityUuid, "List report " + i, IncidentType.OTHER, null);
             reportUuids[i] = submission.getReport().uuid();
             createdReports.add(reportUuids[i]);
-            createdEvidenceRecords.add(submission.getEvidence().uuid());
+            createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
         }
 
         List<ReportRecord> reports = client.listReports(1, 10, null);
@@ -104,10 +105,10 @@ class ReportsClientTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         String reportMessage = "Get Report";
-        ReportSubmission submission = client.submitReport(entityUuid, "Report to get", IncidentType.SPAM, reportMessage, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Report to get", IncidentType.SPAM, reportMessage);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         ReportRecord report = client.getReport(reportUuid);
         assertNotNull(report);
@@ -127,9 +128,9 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("report-evidence.com", "report_evidence_user");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Report with evidence", IncidentType.SPAM, null, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Report with evidence", IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
-        String initialEvidenceUuid = submission.getEvidence().uuid();
+        String initialEvidenceUuid = submission.getEvidence().get(0).uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(initialEvidenceUuid);
 
@@ -163,10 +164,10 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("close-report.com", "close_user");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Report to close", IncidentType.SPAM, null, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Report to close", IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         client.closeReport(reportUuid, null);
         ReportRecord report = client.getReport(reportUuid);
@@ -184,10 +185,10 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("delete-report.com", "delete_user");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Report to delete", IncidentType.SPAM, null, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Report to delete", IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         client.deleteReport(reportUuid);
         removeFromCleanup(createdReports, reportUuid);
@@ -206,10 +207,10 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("list-op-reports.com", "list_op_user");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Operator report", IncidentType.SPAM, null, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Operator report", IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         String submitterUuid = submission.getReport().submittingOperator();
         List<ReportRecord> reports = client.listOperatorReports(submitterUuid, 1, 10, null);
@@ -236,10 +237,10 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("list-entity-reports.com", "list_entity");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Entity report", IncidentType.SPAM, null, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Entity report", IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         List<ReportRecord> reports = client.listEntityReports(entityUuid, 1, 10, null);
         List<String> foundUuids = reports.stream().map(ReportRecord::uuid).toList();
@@ -265,14 +266,14 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("full-params.com", "full_params");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Full params report", IncidentType.SPAM, "Report message", "evidence-tag");
+        ReportSubmission submission = client.submitReport(entityUuid, new ContentInput("Full params report", null, "evidence-tag"), IncidentType.SPAM, "Report message");
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         assertNotNull(submission.getReport());
         assertNotNull(submission.getEvidence());
-        assertEquals("evidence-tag", submission.getEvidence().tag());
+        assertEquals("evidence-tag", submission.getEvidence().get(0).tag());
     }
 
     @Test
@@ -282,11 +283,11 @@ class ReportsClientTest extends FederationClientTestBase {
 
         List<String> reportUuids = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            ReportSubmission submission = client.submitReport(entityUuid, "Page exhaust report " + i, IncidentType.OTHER, null, null);
+            ReportSubmission submission = client.submitReport(entityUuid, "Page exhaust report " + i, IncidentType.OTHER, null);
             String uuid = submission.getReport().uuid();
             reportUuids.add(uuid);
             createdReports.add(uuid);
-            createdEvidenceRecords.add(submission.getEvidence().uuid());
+            createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
         }
 
         List<String> allReportUuids = new ArrayList<>();
@@ -313,9 +314,9 @@ class ReportsClientTest extends FederationClientTestBase {
 
         List<ReportSubmission> submissions = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            ReportSubmission submission = client.submitReport(entityUuid, "Bulk report " + i, IncidentType.OTHER, null, null);
+            ReportSubmission submission = client.submitReport(entityUuid, "Bulk report " + i, IncidentType.OTHER, null);
             createdReports.add(submission.getReport().uuid());
-            createdEvidenceRecords.add(submission.getEvidence().uuid());
+            createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
             submissions.add(submission);
         }
 
@@ -333,11 +334,11 @@ class ReportsClientTest extends FederationClientTestBase {
 
         List<String> reportUuids = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            ReportSubmission submission = client.submitReport(entityUuid, "High volume report " + i, IncidentType.SPAM, null, null);
+            ReportSubmission submission = client.submitReport(entityUuid, "High volume report " + i, IncidentType.SPAM, null);
             String uuid = submission.getReport().uuid();
             reportUuids.add(uuid);
             createdReports.add(uuid);
-            createdEvidenceRecords.add(submission.getEvidence().uuid());
+            createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
         }
 
         assertEquals(10, reportUuids.size());
@@ -353,10 +354,10 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("consistency.com", "consistency_user");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Consistency report content", IncidentType.OTHER, null, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Consistency report content", IncidentType.OTHER, null);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         client.closeReport(reportUuid, ClassificationFlag.SUSPICIOUS);
 
@@ -454,9 +455,9 @@ class ReportsClientTest extends FederationClientTestBase {
         FederationClient manager = createLimitedOperator("lifecycle_manager", true, true, true);
 
         String entityUuid = createSecurityEntity(submitter);
-        ReportSubmission submission = submitter.submitReport(entityUuid, "Full lifecycle report", IncidentType.SPAM, null, null);
+        ReportSubmission submission = submitter.submitReport(entityUuid, "Full lifecycle report", IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
-        String evidenceUuid = submission.getEvidence().uuid();
+        String evidenceUuid = submission.getEvidence().get(0).uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(evidenceUuid);
 
@@ -514,9 +515,9 @@ class ReportsClientTest extends FederationClientTestBase {
 
         Path testFile = createTempFile("report_attach_", "Report attachment content");
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Report with attachment", IncidentType.SPAM, null, "report_attach");
+        ReportSubmission submission = client.submitReport(entityUuid, new ContentInput("Report with attachment", null, "report_attach"), IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
-        String evidenceUuid = submission.getEvidence().uuid();
+        String evidenceUuid = submission.getEvidence().get(0).uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(evidenceUuid);
 
@@ -550,15 +551,15 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityA = createSecurityEntity();
         String entityB = createSecurityEntity();
 
-        ReportSubmission submissionA = client.submitReport(entityA, "Report for entity A", IncidentType.SPAM, null, null);
+        ReportSubmission submissionA = client.submitReport(entityA, "Report for entity A", IncidentType.SPAM, null);
         String reportAUuid = submissionA.getReport().uuid();
         createdReports.add(reportAUuid);
-        createdEvidenceRecords.add(submissionA.getEvidence().uuid());
+        createdEvidenceRecords.add(submissionA.getEvidence().get(0).uuid());
 
-        ReportSubmission submissionB = client.submitReport(entityB, "Report for entity B", IncidentType.SCAM, null, null);
+        ReportSubmission submissionB = client.submitReport(entityB, "Report for entity B", IncidentType.SCAM, null);
         String reportBUuid = submissionB.getReport().uuid();
         createdReports.add(reportBUuid);
-        createdEvidenceRecords.add(submissionB.getEvidence().uuid());
+        createdEvidenceRecords.add(submissionB.getEvidence().get(0).uuid());
 
         List<ReportRecord> entityAReports = client.listEntityReports(entityA, 1, 10, null);
         List<String> entityAReportUuids = entityAReports.stream().map(ReportRecord::uuid).toList();
@@ -597,22 +598,23 @@ class ReportsClientTest extends FederationClientTestBase {
 
         Path testFile = createTempFile("report_local_", "Local attachment content");
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Report with local attachments", IncidentType.SPAM,
-            null, "report_local", List.of(testFile.toString()), null);
+        ReportSubmission submission = client.submitReport(entityUuid, new ContentInput("Report with local attachments", null, "report_local"), IncidentType.SPAM,
+            null);
         String reportUuid = submission.getReport().uuid();
-        String evidenceUuid = submission.getEvidence().uuid();
+        String evidenceUuid = submission.getEvidence().get(0).uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(evidenceUuid);
 
         assertNotNull(submission.getReport());
-        assertNotNull(submission.getEvidence());
-        assertNotNull(submission.attachmentNodes());
-        assertEquals(1, submission.attachmentNodes().size());
+        assertEquals(1, submission.getEvidence().size());
+
+        UploadResult uploadResult = client.uploadFileAttachment(evidenceUuid, testFile.toString());
+        createdAttachments.add(uploadResult.uuid());
 
         List<FileAttachmentRecord> attachments = client.getEvidenceAttachments(evidenceUuid);
         assertEquals(1, attachments.size());
         String attachmentUuid = attachments.get(0).uuid();
-        createdAttachments.add(attachmentUuid);
+        assertEquals(uploadResult.uuid(), attachmentUuid);
     }
 
     @Test
@@ -633,21 +635,22 @@ class ReportsClientTest extends FederationClientTestBase {
         try {
             String fileUrl = "http://127.0.0.1:" + httpServer.getAddress().getPort() + "/file.txt";
 
-            ReportSubmission submission = client.submitReport(entityUuid, "Report with URL attachment", IncidentType.SPAM,
-                null, "report_url", null, List.of(fileUrl));
+            ReportSubmission submission = client.submitReport(entityUuid, new ContentInput("Report with URL attachment", null, "report_url"), IncidentType.SPAM,
+                null);
             String reportUuid = submission.getReport().uuid();
-            String evidenceUuid = submission.getEvidence().uuid();
+            String evidenceUuid = submission.getEvidence().get(0).uuid();
             createdReports.add(reportUuid);
             createdEvidenceRecords.add(evidenceUuid);
 
             assertNotNull(submission.getReport());
-            assertNotNull(submission.getEvidence());
-            assertNotNull(submission.attachmentNodes());
-            assertEquals(1, submission.attachmentNodes().size());
+            assertEquals(1, submission.getEvidence().size());
+
+            UploadResult uploadResult = client.uploadFileAttachmentFromUrl(evidenceUuid, fileUrl);
+            createdAttachments.add(uploadResult.uuid());
 
             List<FileAttachmentRecord> attachments = client.getEvidenceAttachments(evidenceUuid);
             assertEquals(1, attachments.size());
-            createdAttachments.add(attachments.get(0).uuid());
+            assertEquals(uploadResult.uuid(), attachments.get(0).uuid());
         } finally {
             httpServer.stop(0);
         }
@@ -659,11 +662,15 @@ class ReportsClientTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         assertThrows(IllegalArgumentException.class,
-            () -> client.submitReport(entityUuid, "Invalid local paths", IncidentType.SPAM,
-                null, null, List.of(""), null));
+            () -> client.uploadFileAttachment("", "some-file.txt"));
         assertThrows(IllegalArgumentException.class,
-            () -> client.submitReport(entityUuid, "Invalid remote urls", IncidentType.SPAM,
-                null, null, null, List.of("")));
+            () -> client.uploadFileAttachment(entityUuid, "/nonexistent/file.txt"));
+        assertThrows(IllegalArgumentException.class,
+            () -> client.uploadFileAttachmentFromUrl("", "http://example.com/file.txt"));
+        assertThrows(IllegalArgumentException.class,
+            () -> client.uploadFileAttachmentFromUrl(entityUuid, ""));
+        assertThrows(IllegalArgumentException.class,
+            () -> client.uploadFileAttachmentFromUrl(entityUuid, "http://example.com/file.txt", 0));
     }
 
     @Test
@@ -671,10 +678,10 @@ class ReportsClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("opened-reports-" + randomUuid().substring(0, 8) + ".com", "opened_reports");
         createdEntities.add(entityUuid);
 
-        ReportSubmission submission = client.submitReport(entityUuid, "Opened report content", IncidentType.SPAM, null, null);
+        ReportSubmission submission = client.submitReport(entityUuid, "Opened report content", IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         List<ReportRecord> openedReports = client.listOpenedReports(1, 10);
         List<String> openedUuids = openedReports.stream().map(ReportRecord::uuid).toList();
