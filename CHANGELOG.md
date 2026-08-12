@@ -23,7 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Updated `FederationClientTestBase` and related test units to align with the evidence-based `scanContent` / `submitReport` API.
 
 ### Removed
- - Removed the attachment property from `ReportSubmission` and the `submitReport()` overload that uploaded local file paths / remote URLs as attachments. Attachments are now uploaded separately after submission via `FederationClient.uploadFileAttachment()` and `FederationClient.uploadFileAttachmentFromUrl()`.
+ - Removed the attachment property from `ReportSubmission` and the `submitReport()` overload that uploaded local file paths
+   / remote URLs as attachments. Attachments are now uploaded separately after submission via
+   `FederationClient.uploadFileAttachment()` and `FederationClient.uploadFileAttachmentFromUrl()`.
 
 
 
