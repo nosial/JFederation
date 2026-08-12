@@ -23,7 +23,6 @@ heavily based on the original implementation, [FederationLib](https://github.com
   * [Table of Contents](#table-of-contents)
   * [Prerequisites](#prerequisites)
   * [Installation](#installation)
-    * [Via GitHub Packages](#via-github-packages)
     * [Via JitPack](#via-jitpack)
     * [From source](#from-source)
   * [Usage](#usage)
