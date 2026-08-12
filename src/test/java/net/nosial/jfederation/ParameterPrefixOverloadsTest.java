@@ -27,8 +27,15 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
         assertNotNull(client.listAttachments());
         assertNotNull(client.listReports());
 
-        assertFalse(client.listOperators().isEmpty(), "Shared server should have operators");
-        assertFalse(client.listEntities().isEmpty(), "Shared server should have entities");
+        String operatorUuid = client.createOperator("zero-arg-" + randomUuid().substring(0, 6)).uuid();
+        createdOperators.add(operatorUuid);
+        assertTrue(client.listOperators().stream().anyMatch(op -> op.uuid().equals(operatorUuid)),
+            "Zero-arg listOperators should include the created operator");
+
+        String entityUuid = client.pushEntity("zero-arg-" + randomUuid().substring(0, 8) + ".com", "zero_arg");
+        createdEntities.add(entityUuid);
+        assertTrue(client.listEntities().stream().anyMatch(e -> e.uuid().equals(entityUuid)),
+            "Zero-arg listEntities should include the pushed entity");
     }
 
     @Test
