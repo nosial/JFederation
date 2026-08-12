@@ -448,7 +448,7 @@ public final class FederationClient implements AutoCloseable
      */
     public ScannedContent scanContent(String content)
     {
-        return scanContent(content, null, null, null, null);
+        return scanContent(content, null, null, null);
     }
 
     /**
@@ -460,7 +460,7 @@ public final class FederationClient implements AutoCloseable
      */
     public ScannedContent scanContent(String content, String author)
     {
-        return scanContent(content, author, null, null, null);
+        return scanContent(content, author, null, null);
     }
 
     /**
@@ -473,21 +473,57 @@ public final class FederationClient implements AutoCloseable
      */
     public ScannedContent scanContent(String content, String author, Integer topK)
     {
-        return scanContent(content, author, topK, null, null);
+        return scanContent(content, author, topK, null);
     }
 
     /**
-     * Scans content with an optional author identifier, top-K limit, and confidence threshold.
+     * Scans a single content input with no optional parameters.
      *
-     * @param content The text content to scan (must not be empty)
+     * @param evidence The content input to scan
+     * @return A {@link ScannedContent} with the scan results
+     */
+    public ScannedContent scanContent(ContentInput evidence)
+    {
+        return scanContent(evidence, null, null, null);
+    }
+
+    /**
+     * Scans a single content input with an optional author identifier.
+     *
+     * @param evidence The content input to scan
+     * @param author The author entity identifier, or {@code null}
+     * @return A {@link ScannedContent} with the scan results
+     */
+    public ScannedContent scanContent(ContentInput evidence, String author)
+    {
+        return scanContent(evidence, author, null, null);
+    }
+
+    /**
+     * Scans a single content input with an optional author identifier and top-K limit.
+     *
+     * @param evidence The content input to scan
+     * @param author The author entity identifier, or {@code null}
+     * @param topK The maximum number of entity matches to return, or {@code null}
+     * @return A {@link ScannedContent} with the scan results
+     */
+    public ScannedContent scanContent(ContentInput evidence, String author, Integer topK)
+    {
+        return scanContent(evidence, author, topK, null);
+    }
+
+    /**
+     * Scans a single content input through the Federation content scanning system.
+     *
+     * @param evidence The content input to scan
      * @param author The author entity identifier, or {@code null}
      * @param topK The maximum number of entity matches to return, or {@code null}
      * @param threshold The classification confidence threshold, or {@code null}
      * @return A {@link ScannedContent} with the scan results
      */
-    public ScannedContent scanContent(String content, String author, Integer topK, Float threshold)
+    public ScannedContent scanContent(ContentInput evidence, String author, Integer topK, Float threshold)
     {
-        return scanContent(content, author, topK, threshold, null);
+        return scanContent(List.of(evidence), author, topK, threshold);
     }
 
     /**
@@ -498,24 +534,58 @@ public final class FederationClient implements AutoCloseable
      * @param author The author entity identifier, or {@code null}
      * @param topK The maximum number of entity matches to return, or {@code null}
      * @param threshold The classification confidence threshold, or {@code null}
-     * @param metadata Optional metadata to attach to the scan request
      * @return A {@link ScannedContent} with the scan results
      * @throws IllegalArgumentException if content is empty
      */
-    public ScannedContent scanContent(String content, String author, Integer topK,
-                                       Float threshold, Map<String, Object> metadata)
+    public ScannedContent scanContent(String content, String author, Integer topK, Float threshold)
     {
         if (content == null || content.isEmpty())
         {
             throw new IllegalArgumentException("Content cannot be empty");
         }
 
+        return scanContent(List.of(new ContentInput(content)), author, topK, threshold);
+    }
+
+    /**
+     * Scans one or more content inputs through the Federation content scanning system and returns
+     * the scan result including resolved entities, classification, and risk score. Each input may
+     * carry an optional note, tag, confidentiality flag, and metadata.
+     *
+     * @param evidence The content inputs to scan (must not be empty)
+     * @param author The author entity identifier, or {@code null}
+     * @param topK The maximum number of entity matches to return, or {@code null}
+     * @param threshold The classification confidence threshold, or {@code null}
+     * @return A {@link ScannedContent} with the scan results
+     * @throws IllegalArgumentException if evidence is empty or none of the inputs contain text content
+     */
+    public ScannedContent scanContent(List<ContentInput> evidence, String author, Integer topK, Float threshold)
+    {
+        if (evidence == null || evidence.isEmpty())
+        {
+            throw new IllegalArgumentException("Evidence cannot be empty");
+        }
+
+        boolean hasContent = false;
+        for (ContentInput item : evidence)
+        {
+            if (item.textContent() != null && !item.textContent().isEmpty())
+            {
+                hasContent = true;
+                break;
+            }
+        }
+
+        if (!hasContent)
+        {
+            throw new IllegalArgumentException("At least one evidence record must contain text content");
+        }
+
         Map<String, Object> params = new LinkedHashMap<>();
-        params.put("content", content);
+        params.put("evidence", evidence.size() == 1 ? evidence.get(0) : evidence);
         if (author != null) params.put("author", author);
         if (topK != null) params.put("top_k", topK);
         if (threshold != null) params.put("threshold", threshold);
-        if (metadata != null) params.put("metadata", metadata);
 
         JsonNode node = makeRequest("POST", "scan", params, 200, "Failed to scan content");
         return Json.mapper().convertValue(node, ScannedContent.class);
@@ -2095,7 +2165,7 @@ public final class FederationClient implements AutoCloseable
      * Sets a relationship between two entities.
      *
      * @param entityIdentifier The source entity UUID, hostname, or hash
-     * @param targetEntityUuid The UUID of the target entity
+     * @param targetEntityUuid The UUID, SHA-256 hash, or entity address of the target entity
      * @param relationshipType The type of relationship to establish
      */
     public void setEntityRelationship(String entityIdentifier, String targetEntityUuid,
@@ -2112,7 +2182,7 @@ public final class FederationClient implements AutoCloseable
         }
 
         Map<String, Object> params = new LinkedHashMap<>();
-        params.put("target_entity_uuid", targetEntityUuid);
+        params.put("target_identifier", targetEntityUuid);
         params.put("relationship_type", relationshipType.getValue());
 
         makeRequest("PATCH", "entities/" + entityIdentifier + "/relationship", params, 200,
@@ -2630,11 +2700,11 @@ public final class FederationClient implements AutoCloseable
      * @param reportingEntity The entity UUID, hostname, or hash being reported
      * @param content The report content / evidence text
      * @param incidentType The type of security incident
-     * @return A {@link ReportSubmission} containing the created report, evidence, and optional attachments
+     * @return A {@link ReportSubmission} containing the created report and evidence
      */
     public ReportSubmission submitReport(String reportingEntity, String content, IncidentType incidentType)
     {
-        return submitReport(reportingEntity, content, incidentType, null, null);
+        return submitReport(reportingEntity, content, incidentType, null);
     }
 
     /**
@@ -2644,84 +2714,106 @@ public final class FederationClient implements AutoCloseable
      * @param content The report content / evidence text
      * @param incidentType The type of security incident
      * @param reportMessage An optional message attached to the report
-     * @return A {@link ReportSubmission} containing the created report, evidence, and optional attachments
+     * @return A {@link ReportSubmission} containing the created report and evidence
      */
     public ReportSubmission submitReport(String reportingEntity, String content, IncidentType incidentType, String reportMessage)
     {
-        return submitReport(reportingEntity, content, incidentType, reportMessage, null);
+        if (content == null || content.isEmpty())
+        {
+            throw new IllegalArgumentException("Content cannot be empty");
+        }
+
+        return submitReport(reportingEntity, new ContentInput(content), incidentType, reportMessage);
     }
 
     /**
-     * Submits a report with optional report message and evidence tag.
+     * Submits a report with a single evidence input.
      *
      * @param reportingEntity The entity UUID, hostname, or hash being reported
-     * @param content The report content / evidence text
+     * @param evidence The evidence input to attach to the report
+     * @param incidentType The type of security incident
+     * @return A {@link ReportSubmission} containing the created report and evidence
+     */
+    public ReportSubmission submitReport(String reportingEntity, ContentInput evidence, IncidentType incidentType)
+    {
+        return submitReport(reportingEntity, evidence, incidentType, null);
+    }
+
+    /**
+     * Submits a report with a single evidence input and an optional report message.
+     *
+     * @param reportingEntity The entity UUID, hostname, or hash being reported
+     * @param evidence The evidence input to attach to the report
      * @param incidentType The type of security incident
      * @param reportMessage An optional message attached to the report
-     * @param evidenceTag An optional tag for the created evidence record
-     * @return A {@link ReportSubmission} containing the created report, evidence, and optional attachments
+     * @return A {@link ReportSubmission} containing the created report and evidence
      */
-    public ReportSubmission submitReport(String reportingEntity, String content, IncidentType incidentType, String reportMessage,
-                                            String evidenceTag)
+    public ReportSubmission submitReport(String reportingEntity, ContentInput evidence, IncidentType incidentType, String reportMessage)
+    {
+        return submitReport(reportingEntity, List.of(evidence), incidentType, reportMessage);
+    }
+
+    /**
+     * Submits a report with one or more evidence inputs.
+     *
+     * @param reportingEntity The entity UUID, hostname, or hash being reported
+     * @param evidence The evidence inputs to attach to the report
+     * @param incidentType The type of security incident
+     * @return A {@link ReportSubmission} containing the created report and evidence
+     */
+    public ReportSubmission submitReport(String reportingEntity, List<ContentInput> evidence, IncidentType incidentType)
+    {
+        return submitReport(reportingEntity, evidence, incidentType, null);
+    }
+
+    /**
+     * Submits a report with one or more evidence inputs and an optional report message. Each
+     * evidence input may carry an optional note, tag, confidentiality flag, and metadata.
+     *
+     * @param reportingEntity The entity UUID, hostname, or hash being reported
+     * @param evidence The evidence inputs to attach to the report
+     * @param incidentType The type of security incident
+     * @param reportMessage An optional message attached to the report
+     * @return A {@link ReportSubmission} containing the created report and evidence
+     * @throws IllegalArgumentException if the reporting entity or evidence is empty
+     */
+    public ReportSubmission submitReport(String reportingEntity, List<ContentInput> evidence, IncidentType incidentType, String reportMessage)
     {
         if (reportingEntity == null || reportingEntity.isEmpty())
         {
             throw new IllegalArgumentException("Reporting entity identifier cannot be empty");
         }
 
-        if (content == null || content.isEmpty())
+        if (evidence == null || evidence.isEmpty())
         {
-            throw new IllegalArgumentException("Content cannot be empty");
+            throw new IllegalArgumentException("Evidence cannot be empty");
         }
 
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("reporting_entity", reportingEntity);
-        params.put("content", content);
+        params.put("evidence", evidence.size() == 1 ? evidence.get(0) : evidence);
         params.put("incident_type", incidentType.getValue());
-
         if (reportMessage != null) params.put("report_message", reportMessage);
-        if (evidenceTag != null) params.put("evidence_tag", evidenceTag);
 
         JsonNode node = makeRequest("POST", "reports", params, 200, "Failed to submit report");
         return Json.mapper().convertValue(node, ReportSubmission.class);
     }
 
     /**
-     * Submits a report with optional report message, evidence tag, and local file attachments.
-     * Each local file path is uploaded as a file attachment linked to the evidence record created
-     * for the report.
+     * Submits a report with an optional report message and attachments. Each local file path is
+     * uploaded as a file attachment, and each remote URL is downloaded and uploaded as an attachment
+     * (with a default maximum size of 50 MB), all linked to the evidence record created for the report.
      *
      * @param reportingEntity The entity UUID, hostname, or hash being reported
-     * @param content The report content / evidence text
+     * @param evidence The evidence input to attach to the report
      * @param incidentType The type of security incident
      * @param reportMessage An optional message attached to the report
-     * @param evidenceTag An optional tag for the created evidence record
-     * @param localFilePaths Optional list of local file paths to attach to the report, or {@code null}
-     * @return A {@link ReportSubmission} containing the created report, evidence, and optional attachments
-     */
-    public ReportSubmission submitReport(String reportingEntity, String content, IncidentType incidentType, String reportMessage,
-                                            String evidenceTag, List<String> localFilePaths)
-    {
-        return submitReport(reportingEntity, content, incidentType, reportMessage, evidenceTag, localFilePaths, null);
-    }
-
-    /**
-     * Submits a report with an optional report message, evidence tag, and attachments. Each local file
-     * path is uploaded as a file attachment, and each remote URL is downloaded and uploaded as an
-     * attachment (with a default maximum size of 50 MB), all linked to the evidence record created
-     * for the report.
-     *
-     * @param reportingEntity The entity UUID, hostname, or hash being reported
-     * @param content The report content / evidence text
-     * @param incidentType The type of security incident
-     * @param reportMessage An optional message attached to the report
-     * @param evidenceTag An optional tag for the created evidence record
      * @param localFilePaths Optional list of local file paths to attach to the report, or {@code null}
      * @param remoteUrls Optional list of remote URLs to download and attach to the report, or {@code null}
      * @return A {@link ReportSubmission} containing the created report, evidence, and optional attachments
      */
-    public ReportSubmission submitReport(String reportingEntity, String content, IncidentType incidentType, String reportMessage,
-                                            String evidenceTag, List<String> localFilePaths, List<String> remoteUrls)
+    public ReportSubmission submitReport(String reportingEntity, ContentInput evidence, IncidentType incidentType, String reportMessage,
+                                            List<String> localFilePaths, List<String> remoteUrls)
     {
         if (localFilePaths != null)
         {
@@ -2745,10 +2837,10 @@ public final class FederationClient implements AutoCloseable
             }
         }
 
-        ReportSubmission submission = submitReport(reportingEntity, content, incidentType, reportMessage, evidenceTag);
+        ReportSubmission submission = submitReport(reportingEntity, evidence, incidentType, reportMessage);
 
         List<UploadResult> attachments = new ArrayList<>();
-        String evidenceUuid = submission.getEvidence().uuid();
+        String evidenceUuid = submission.getEvidence().get(0).uuid();
 
         if (localFilePaths != null)
         {
