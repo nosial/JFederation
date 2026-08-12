@@ -153,8 +153,8 @@ public abstract class FederationClientTestBase {
         String entityUuid = createSecurityEntity(client);
         ReportSubmission submission = client.submitReport(entityUuid, "Security test report", IncidentType.SPAM);
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().uuid());
-        return new SecurityReport(submission.getReport().uuid(), entityUuid, submission.getEvidence().uuid());
+        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        return new SecurityReport(submission.getReport().uuid(), entityUuid, submission.getEvidence().get(0).uuid());
     }
 
     protected Path createTempFile(String name, String content) {
