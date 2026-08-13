@@ -2503,7 +2503,7 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
-     * Submits evidence with full control over confidentiality and optional metadata.
+     * Submits evidence with full control over confidentiality, metadata, and an optional immutable classification.
      *
      * @param entityIdentifier The entity UUID, hostname, or hash
      * @param textContent The evidence text content (may be {@code null})
@@ -2514,6 +2514,24 @@ public final class FederationClient implements AutoCloseable
      * @return The UUID of the created evidence record
      */
     public String submitEvidence(String entityIdentifier, String textContent, String note, String tag, boolean confidential, Map<String, Object> metadata)
+    {
+        return submitEvidence(entityIdentifier, textContent, note, tag, confidential, metadata, null);
+    }
+
+    /**
+     * Submits evidence with an optional immutable classification. Classifications require management permissions
+     * and train the Bayesian service when it is enabled.
+     *
+     * @param entityIdentifier The entity UUID, hostname, or hash
+     * @param textContent The evidence text content (may be {@code null})
+     * @param note An optional note
+     * @param tag An optional tag
+     * @param confidential Whether the evidence is confidential
+     * @param metadata Optional metadata key-value pairs
+     * @param classification Optional immutable classification
+     * @return The UUID of the created evidence record
+     */
+    public String submitEvidence(String entityIdentifier, String textContent, String note, String tag, boolean confidential, Map<String, Object> metadata, ClassificationFlag classification)
     {
         if (entityIdentifier == null || entityIdentifier.isEmpty())
         {
@@ -2527,6 +2545,7 @@ public final class FederationClient implements AutoCloseable
         if (note != null) params.put("note", note);
         if (tag != null) params.put("tag", tag);
         if (metadata != null) params.put("metadata", metadata);
+        if (classification != null) params.put("classification", classification.getValue());
 
         JsonNode node = makeRequest("POST", "evidence", params, 201,
             "Failed to submit evidence for entity " + entityIdentifier);
@@ -2576,6 +2595,28 @@ public final class FederationClient implements AutoCloseable
 
         makeRequest("PATCH", "evidence/" + evidenceUuid + "/update-tag", params, 200,
             "Failed to update tag for evidence with UUID " + evidenceUuid);
+    }
+
+    /**
+     * Assigns an immutable classification to evidence.
+     *
+     * @param evidenceUuid The UUID of the evidence record
+     * @param classification The classification to assign
+     */
+    public void classifyEvidence(String evidenceUuid, ClassificationFlag classification)
+    {
+        if (evidenceUuid == null || evidenceUuid.isEmpty())
+        {
+            throw new IllegalArgumentException("Evidence UUID cannot be empty");
+        }
+
+        Objects.requireNonNull(classification, "Classification cannot be null");
+
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("classification_flag", classification.getValue());
+
+        makeRequest("PATCH", "evidence/" + evidenceUuid + "/classify", params, 200,
+            "Failed to classify evidence with UUID " + evidenceUuid);
     }
 
     /**

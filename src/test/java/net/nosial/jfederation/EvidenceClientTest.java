@@ -1,5 +1,6 @@
 package net.nosial.jfederation;
 
+import net.nosial.jfederation.enums.ClassificationFlag;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.EvidenceRecord;
@@ -412,6 +413,69 @@ class EvidenceClientTest extends FederationClientTestBase {
             fail("Attachment should be deleted when parent evidence is deleted");
         } catch (FederationClientException e) {
             assertEquals(404, e.getStatusCode());
+        }
+    }
+
+    @Test
+    void testEvidenceClassificationIsImmutable() {
+        String entityUuid = client.pushEntity("classified-evidence-" + randomUuid().substring(0, 8) + ".com", "classified_evidence");
+        createdEntities.add(entityUuid);
+
+        String evidenceUuid = client.submitEvidence(entityUuid, "Immutable evidence classification", "Note", "classified");
+        createdEvidenceRecords.add(evidenceUuid);
+
+        client.classifyEvidence(evidenceUuid, ClassificationFlag.NORMAL);
+        assertEquals(ClassificationFlag.NORMAL, client.getEvidenceRecord(evidenceUuid).classificationFlag());
+
+        FederationClientException exception = assertThrows(FederationClientException.class,
+            () -> client.classifyEvidence(evidenceUuid, ClassificationFlag.MALICIOUS));
+        assertEquals(409, exception.getStatusCode());
+        assertEquals(ClassificationFlag.NORMAL, client.getEvidenceRecord(evidenceUuid).classificationFlag());
+    }
+
+    @Test
+    void testSubmitEvidenceWithClassification() {
+        String entityUuid = client.pushEntity("submission-classification-" + randomUuid().substring(0, 8) + ".com", "submission_classification");
+        createdEntities.add(entityUuid);
+
+        String evidenceUuid = client.submitEvidence(
+            entityUuid,
+            "Classified during submission",
+            "Note",
+            "submission_classification",
+            false,
+            null,
+            ClassificationFlag.SUSPICIOUS
+        );
+        createdEvidenceRecords.add(evidenceUuid);
+
+        assertEquals(ClassificationFlag.SUSPICIOUS, client.getEvidenceRecord(evidenceUuid).classificationFlag());
+    }
+
+    @Test
+    void testEvidenceClassificationRequiresManagementPermission() {
+        String entityUuid = createSecurityEntity();
+        String evidenceUuid = createSecurityEvidence(entityUuid);
+        FederationClient clientOnly = createLimitedOperator("classification_client", false, false, true);
+
+        try {
+            FederationClientException classifyException = assertThrows(FederationClientException.class,
+                () -> clientOnly.classifyEvidence(evidenceUuid, ClassificationFlag.MALICIOUS));
+            assertEquals(403, classifyException.getStatusCode());
+
+            FederationClientException submitException = assertThrows(FederationClientException.class,
+                () -> clientOnly.submitEvidence(
+                    entityUuid,
+                    "Unauthorized classification submission",
+                    "Note",
+                    "classification_security",
+                    false,
+                    null,
+                    ClassificationFlag.MALICIOUS
+                ));
+            assertEquals(403, submitException.getStatusCode());
+        } finally {
+            clientOnly.close();
         }
     }
 }
