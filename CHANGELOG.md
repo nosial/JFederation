@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.4] - 2026-08-13
 
+This update introduces changes from the specification
+
 ### Added
  - Added `FederationClient.classifyEvidence()` for `PATCH /evidence/{uuid}/classify`.
  - Added a `submitEvidence()` overload accepting an optional immutable `ClassificationFlag`.
