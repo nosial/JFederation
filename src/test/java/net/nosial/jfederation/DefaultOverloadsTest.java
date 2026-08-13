@@ -36,6 +36,8 @@ class DefaultOverloadsTest extends FederationClientTestBase {
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        client.assignOperatorToReport(reportUuid, client.getSelf().uuid());
+
 
         client.closeReport(reportUuid);
 

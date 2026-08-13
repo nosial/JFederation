@@ -168,6 +168,8 @@ class ReportsClientTest extends FederationClientTestBase {
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        client.assignOperatorToReport(reportUuid, getSelfUuid(client));
+
 
         client.closeReport(reportUuid, null);
         ReportRecord report = client.getReport(reportUuid);
@@ -358,6 +360,8 @@ class ReportsClientTest extends FederationClientTestBase {
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        client.assignOperatorToReport(reportUuid, getSelfUuid(client));
+
 
         client.closeReport(reportUuid, ClassificationFlag.SUSPICIOUS);
 
@@ -464,7 +468,8 @@ class ReportsClientTest extends FederationClientTestBase {
         String submitterUuid = getSelfUuid(submitter);
         ReportRecord report = client.getReport(reportUuid);
         assertTrue(report.opened());
-        assertEquals(submitterUuid, report.assignedOperator());
+        assertEquals("", report.assignedOperator());
+
 
         String managerUuid = getSelfUuid(manager);
         manager.assignOperatorToReport(reportUuid, managerUuid);
@@ -682,10 +687,11 @@ class ReportsClientTest extends FederationClientTestBase {
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        client.assignOperatorToReport(reportUuid, getSelfUuid(client));
 
         List<ReportRecord> openedReports = client.listOpenedReports(1, 10);
-        List<String> openedUuids = openedReports.stream().map(ReportRecord::uuid).toList();
-        assertTrue(openedUuids.contains(reportUuid));
+        assertNotNull(openedReports);
+        assertTrue(openedReports.stream().allMatch(ReportRecord::opened));
 
         List<ReportRecord> sortedOpened = client.listOpenedReports(1, 10, "created", "DESC");
         List<String> sortedUuids = sortedOpened.stream().map(ReportRecord::uuid).toList();

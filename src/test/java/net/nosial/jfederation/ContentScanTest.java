@@ -37,6 +37,8 @@ class ContentScanTest extends FederationClientTestBase {
             String reportUuid = submission.getReport().uuid();
             trainingReports.add(reportUuid);
             trainingEvidence.add(submission.getEvidence().get(0).uuid());
+            trainingClient.assignOperatorToReport(reportUuid, trainingClient.getSelf().uuid());
+
             trainingClient.closeReport(reportUuid, flag);
         }
 
