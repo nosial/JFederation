@@ -160,21 +160,20 @@ System.out.printf("Known entities: %d, open reports: %d%n", info.knownEntities()
 
 ### Content scanning
 
-Content scanners allow applications to submit text content to the server, the server resolves any
-known entities found within the content, classifies the content, and returns a risk assessment:
+Content scanners accept a `ContentInput` or a list of inputs. Each input can carry text, an
+operator note, tag, confidentiality flag, and metadata; at least one input must contain text:
 
-| Method (omit optional parameters)                         | Return Type      | Description                                              |
-|-----------------------------------------------------------|------------------|----------------------------------------------------------|
-| `scanContent(content)`                                    | `ScannedContent` | Scans content with no additional parameters              |
-| `scanContent(content, author)`                            | `ScannedContent` | Scans content with an optional author entity identifier  |
-| `scanContent(content, author, topK)`                      | `ScannedContent` | Scans content with a maximum number of returned entities |
-| `scanContent(content, author, topK, threshold)`           | `ScannedContent` | Scans content with the given confidence threshold        |
-| `scanContent(content, author, topK, threshold, metadata)` | `ScannedContent` | Scans content with optional metadata                     |
+| Method (omit optional parameters)                          | Return Type      | Description                                  |
+|------------------------------------------------------------|------------------|----------------------------------------------|
+| `scanContent(content)`                                     | `ScannedContent` | Convenience overload for a single text input |
+| `scanContent(ContentInput, author, topK, threshold)`       | `ScannedContent` | Scans one typed content input                |
+| `scanContent(List<ContentInput>, author, topK, threshold)` | `ScannedContent` | Scans one or more typed content inputs       |
 
 Here's an example of scanning content and inspecting the classification result:
 
 ```java
-ScannedContent scan = client.scanContent("Suspicious message to inspect", "author@example.com");
+ScannedContent scan = client.scanContent(
+    new ContentInput("Suspicious message to inspect"), "author@example.com", null, null);
 
 ContentClassification classification = scan.getClassification();
 System.out.printf("Classification %s with %.1f%% confidence, detected language: %s%n",
@@ -241,23 +240,24 @@ String refreshed = client.generateAccessToken(true); // refresh and update this 
 Entities are the subjects tracked by the federation; users, domains, IP addresses, or any other
 identifier present in scanned content:
 
-| Method                                                    | Description                                       |
-|-----------------------------------------------------------|---------------------------------------------------|
-| `getEntityRecord(identifier)`                             | Returns the record of an entity by identifier     |
-| `searchEntities(query, page, limit, category, by, order)` | Searches entities by identifier                   |
-| `listEntities(page, limit, category, by, order)`          | Lists entities                                    |
-| `getTopThreats(limit)`                                    | Lists the highest-risk entities                   |
-| `updateEntity(identifier, metadata)`                      | Updates the metadata of an entity                 |
-| `deleteEntity(identifier)`                                | Deletes an entity                                 |
-| `setEntityWhitelist(identifier, whitelisted)`             | (Un)whitelists an entity, exempting it from scans |
-| `clearEntityReputation(identifier)`                       | Clears the accumulated reputation of an entity    |
-| `setEntityRelationship(identifier, targetUuid, type)`     | Sets the relationship between two entities        |
-| `clearEntityRelationship(identifier)`                     | Clears the relationship of an entity              |
-| `pushEntity(host, identifier, metadata)`                  | Pushes an entity to another federation server     |
-| `listEntityAuditLogs(identifier, ...)`                    | Lists the audit log entries involving an entity   |
-| `listEntityBlacklistRecords(identifier, ...)`             | Lists the blacklist records against an entity     |
-| `listEntityEvidenceRecords(identifier, ...)`              | Lists the evidence submitted against an entity    |
-| `listEntityReports(identifier, ...)`                      | Lists the reports submitted against an entity     |
+| Method                                                    | Description                                                       |
+|-----------------------------------------------------------|-------------------------------------------------------------------|
+| `getEntityRecord(identifier)`                             | Returns the record of an entity by identifier                     |
+| `queryEntity(identifier)`                                 | Returns an entity's relationship group and active blacklist state |
+| `searchEntities(query, page, limit, category, by, order)` | Searches entities by identifier                                   |
+| `listEntities(page, limit, category, by, order)`          | Lists entities                                                    |
+| `getTopThreats(limit)`                                    | Lists the highest-risk entities                                   |
+| `updateEntity(identifier, metadata)`                      | Updates the metadata of an entity                                 |
+| `deleteEntity(identifier)`                                | Deletes an entity                                                 |
+| `setEntityWhitelist(identifier, whitelisted)`             | (Un)whitelists an entity, exempting it from scans                 |
+| `clearEntityReputation(identifier)`                       | Clears the accumulated reputation of an entity                    |
+| `setEntityRelationship(identifier, targetUuid, type)`     | Sets the relationship between two entities                        |
+| `clearEntityRelationship(identifier)`                     | Clears the relationship of an entity                              |
+| `pushEntity(host, identifier, metadata)`                  | Pushes an entity to another federation server                     |
+| `listEntityAuditLogs(identifier, ...)`                    | Lists the audit log entries involving an entity                   |
+| `listEntityBlacklistRecords(identifier, ...)`             | Lists the blacklist records against an entity                     |
+| `listEntityEvidenceRecords(identifier, ...)`              | Lists the evidence submitted against an entity                    |
+| `listEntityReports(identifier, ...)`                      | Lists the reports submitted against an entity                     |
 
 Record listings of entities are `EntityRecord` objects carrying the identifier, risk score,
 classification flag, relationship hierarchy, and metadata of the entity.
@@ -290,20 +290,22 @@ permissions.
 Reports are the central mechanism of the federation server, submitted against an entity, they group
 one or more pieces of evidence and can be classified, assigned to operators, and closed:
 
-| Method                                                    | Description                                               |
-|-----------------------------------------------------------|-----------------------------------------------------------|
-| `submitReport(entity, content, incidentType, ...)`        | Submits a report against an entity for the given incident |
-| `listReports(page, limit, category, by, order)`           | Lists reports                                             |
-| `listOpenedReports(page, limit, by, order)`               | Lists reports that are not yet closed                     |
-| `searchReports(query, page, limit, category, by, order)`  | Searches reports by content                               |
-| `getReport(uuid)`                                         | Returns a single report                                   |
-| `closeReport(uuid)` / `closeReport(uuid, classification)` | Closes a report, optionally with a classification         |
-| `assignOperatorToReport(reportUuid, operatorUuid)`        | Assigns an operator to a report                           |
-| `deleteReport(uuid)`                                      | Deletes a report                                          |
+| Method                                                            | Description                                       |
+|-------------------------------------------------------------------|---------------------------------------------------|
+| `submitReport(entity, ContentInput, incidentType, message)`       | Submits one evidence item with a report           |
+| `submitReport(entity, List<ContentInput>, incidentType, message)` | Submits one or more evidence items with a report  |
+| `listReports(page, limit, category, by, order)`                   | Lists reports                                     |
+| `listOpenedReports(page, limit, by, order)`                       | Lists reports that are not yet closed             |
+| `searchReports(query, page, limit, category, by, order)`          | Searches reports by content                       |
+| `getReport(uuid)`                                                 | Returns a single report                           |
+| `listReportEvidenceRecords(reportUuid, ...)`                      | Lists evidence associated with a report           |
+| `closeReport(uuid)` / `closeReport(uuid, classification)`         | Closes a report, optionally with a classification |
+| `assignOperatorToReport(reportUuid, operatorUuid)`                | Assigns an operator to a report                   |
+| `deleteReport(uuid)`                                              | Deletes a report                                  |
 
-`submitReport` returns a `ReportSubmission` object which provides typed access to the created
-report record (`getReport()`) and the evidence record automatically generated from the report's
-content (`getEvidence()`), along with any attachment upload results the server generated.
+`submitReport` returns a `ReportSubmission` object with typed access to the created report
+(`getReport()`) and its `List<EvidenceRecord>` (`getEvidence()`). Upload attachments separately
+against an evidence record.
 
 ### Blacklist records
 

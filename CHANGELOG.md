@@ -5,9 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.5] - Ongoing
+## [1.0.5] - 2026-08-16
 
-This is an ongoing update
+This update introduces changes from the specification
+
+### Added
+ - Added `EntityQueryResult` and `FederationClient.queryEntity()` for `GET /entities/{identifier}/query`.
+ - Added default-parameter overloads for `scanContent(List<ContentInput>)`.
+
+### Changed
+ - Replaced the legacy operator-mutation audit types with `OPERATOR_UPDATED`.
+ - Removed audit types no longer emitted by FederationLib: `ENTITY_REPUTATION_CLEARED`,
+   `ENTITY_WHITELIST_CHANGED`, and `BLACKLIST_ATTACHMENT_ADDED`.
+ - Updated client integration and enum-parity tests for the current entity-query and audit-log contracts.
+
 
 
 
