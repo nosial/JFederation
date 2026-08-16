@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - Ongoing
+
+This is an ongoing update
+
+
+
 ## [1.0.5] - 2026-08-16
 
 This update introduces changes from the specification
@@ -18,7 +24,6 @@ This update introduces changes from the specification
  - Removed audit types no longer emitted by FederationLib: `ENTITY_REPUTATION_CLEARED`,
    `ENTITY_WHITELIST_CHANGED`, and `BLACKLIST_ATTACHMENT_ADDED`.
  - Updated client integration and enum-parity tests for the current entity-query and audit-log contracts.
-
 
 
 
