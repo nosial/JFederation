@@ -548,6 +548,42 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
+     * Scans one or more content inputs without an author or classification tuning parameters.
+     *
+     * @param evidence The content inputs to scan
+     * @return A {@link ScannedContent} with the scan results
+     */
+    public ScannedContent scanContent(List<ContentInput> evidence)
+    {
+        return scanContent(evidence, null, null, null);
+    }
+
+    /**
+     * Scans one or more content inputs for an optional author.
+     *
+     * @param evidence The content inputs to scan
+     * @param author The author entity identifier, or {@code null}
+     * @return A {@link ScannedContent} with the scan results
+     */
+    public ScannedContent scanContent(List<ContentInput> evidence, String author)
+    {
+        return scanContent(evidence, author, null, null);
+    }
+
+    /**
+     * Scans one or more content inputs with an optional author and result limit.
+     *
+     * @param evidence The content inputs to scan
+     * @param author The author entity identifier, or {@code null}
+     * @param topK The maximum number of entity matches to return, or {@code null}
+     * @return A {@link ScannedContent} with the scan results
+     */
+    public ScannedContent scanContent(List<ContentInput> evidence, String author, Integer topK)
+    {
+        return scanContent(evidence, author, topK, null);
+    }
+
+    /**
      * Scans one or more content inputs through the Federation content scanning system and returns
      * the scan result including resolved entities, classification, and risk score. Each input may
      * carry an optional note, tag, confidentiality flag, and metadata.
@@ -557,7 +593,7 @@ public final class FederationClient implements AutoCloseable
      * @param topK The maximum number of entity matches to return, or {@code null}
      * @param threshold The classification confidence threshold, or {@code null}
      * @return A {@link ScannedContent} with the scan results
-     * @throws IllegalArgumentException if evidence is empty or none of the inputs contain text content
+     * @throws IllegalArgumentException if evidence is empty, contains null, or none of the inputs contain text content
      */
     public ScannedContent scanContent(List<ContentInput> evidence, String author, Integer topK, Float threshold)
     {
@@ -569,6 +605,11 @@ public final class FederationClient implements AutoCloseable
         boolean hasContent = false;
         for (ContentInput item : evidence)
         {
+            if (item == null)
+            {
+                throw new IllegalArgumentException("Evidence items cannot be null");
+            }
+
             if (item.textContent() != null && !item.textContent().isEmpty())
             {
                 hasContent = true;
@@ -1607,6 +1648,24 @@ public final class FederationClient implements AutoCloseable
             "Failed to get the entity record for " + entityIdentifier);
         return Json.mapper().convertValue(node, EntityRecord.class);
     }
+    /**
+     * Retrieves an entity together with its direct relationship group and active blacklist state.
+     *
+     * @param entityIdentifier The entity UUID, hostname, or SHA-256 hash
+     * @return The entity query result
+     */
+    public EntityQueryResult queryEntity(String entityIdentifier)
+    {
+        if (entityIdentifier == null || entityIdentifier.isEmpty())
+        {
+            throw new IllegalArgumentException("Entity identifier cannot be empty");
+        }
+
+        JsonNode node = makeRequest("GET", "entities/" + entityIdentifier + "/query", null, 200,
+            "Failed to query entity " + entityIdentifier);
+        return Json.mapper().convertValue(node, EntityQueryResult.class);
+    }
+
 
     /**
      * Lists entities with pagination.
