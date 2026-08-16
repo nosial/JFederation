@@ -153,7 +153,7 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
         tokenOperatorClient.generateAccessToken(true);
         assertTrue(client.listOperatorAuditLogs(tokenOperatorUuid, 1, 100, "OPERATOR_EVENTS").stream()
             .anyMatch(log -> tokenOperatorUuid.equals(log.operatorUuid())
-                && log.type().getValue().equals("OPERATOR_ACCESS_TOKEN_GENERATED")),
+                && log.type().getValue().equals("OPERATOR_UPDATED")),
             "Fresh token generation should appear as the newest operator event");
         tokenOperatorClient.close();
     }

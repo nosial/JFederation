@@ -107,6 +107,15 @@ class DefaultOverloadsTest extends FederationClientTestBase {
     }
 
     @Test
+    void testScanContentListDefaultOverloads() {
+        List<ContentInput> evidence = List.of(new ContentInput(BENIGN_SAMPLE_TEXT));
+
+        assertNotNull(client.scanContent(evidence));
+        assertNotNull(client.scanContent(evidence, "some-author"));
+        assertNotNull(client.scanContent(evidence, null, 2));
+    }
+
+    @Test
     void testSubmitReportWithOnlyMessage() {
         String entityUuid = client.pushEntity("report-message-" + randomUuid().substring(0, 8) + ".com", "report_message");
         createdEntities.add(entityUuid);
@@ -174,6 +183,8 @@ class DefaultOverloadsTest extends FederationClientTestBase {
     @Test
     void testDefaultOverloadsValidation() {
         assertThrows(IllegalArgumentException.class, () -> client.scanContent(""));
+        assertThrows(IllegalArgumentException.class, () -> client.scanContent(List.of()));
+        assertThrows(IllegalArgumentException.class, () -> client.scanContent(List.of(new ContentInput(null))));
         assertThrows(IllegalArgumentException.class, () -> client.closeReport(""));
         assertThrows(IllegalArgumentException.class, () -> client.closeReport(null));
         assertThrows(IllegalArgumentException.class,

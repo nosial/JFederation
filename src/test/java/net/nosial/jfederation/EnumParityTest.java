@@ -17,21 +17,17 @@ class EnumParityTest {
     @Test
     void testAuditLogTypeWireValuesMatchSpecificationEnum() {
         String[] expectedWireValues = {
-            "OPERATOR_CREATED", "OPERATOR_DELETED", "OPERATOR_DISABLED", "OPERATOR_ENABLED",
-            "OPERATOR_PERMISSIONS_CHANGED", "OPERATOR_ACCESS_TOKEN_GENERATED", "OPERATOR_NAME_CHANGED",
-            "OPERATOR_AUTO_ASSIGN_CHANGED",
+            "OPERATOR_CREATED", "OPERATOR_DELETED", "OPERATOR_DISABLED", "OPERATOR_ENABLED", "OPERATOR_UPDATED",
             "ATTACHMENT_UPLOADED", "ATTACHMENT_DELETED",
             "EVIDENCE_SUBMITTED", "EVIDENCE_UPDATED", "EVIDENCE_DELETED",
             "REPORT_GENERATED", "REPORT_SUBMITTED", "REPORT_OPERATOR_ASSIGNED", "REPORT_CLOSED", "REPORT_DELETED",
             "ENTITY_DELETED", "ENTITY_BLACKLISTED", "ENTITY_PUSHED", "ENTITY_UPDATED",
-            "ENTITY_REPUTATION_CLEARED", "ENTITY_WHITELIST_CHANGED",
-            "BLACKLIST_DELETED", "BLACKLIST_LIFTED", "BLACKLIST_EXTENDED", "BLACKLIST_ATTACHMENT_ADDED",
+            "BLACKLIST_DELETED", "BLACKLIST_LIFTED", "BLACKLIST_EXTENDED",
             "OTHER"
         };
-        assertEquals(29, expectedWireValues.length);
-        assertEquals(29, AuditLogType.values().length,
+        assertEquals(23, expectedWireValues.length);
+        assertEquals(23, AuditLogType.values().length,
             "Java AuditLogType must cover every case of the specification");
-
         for (String wireValue : expectedWireValues) {
             AuditLogType parsed = Json.readValue("\"" + wireValue + "\"", AuditLogType.class);
             assertNotNull(parsed, "Failed to deserialize audit type '" + wireValue + "'");

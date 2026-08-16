@@ -4,6 +4,7 @@ import net.nosial.jfederation.enums.EntityRelationshipType;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.EntityRecord;
+import net.nosial.jfederation.records.EntityQueryResult;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.ServerInformation;
 import org.junit.jupiter.api.Test;
@@ -361,6 +362,32 @@ class EntitiesClientTest extends FederationClientTestBase {
         assertFalse(client.listEntityEvidenceRecords(entityUuid).isEmpty());
         assertFalse(client.listEntityBlacklistRecords(entityUuid).isEmpty());
     }
+    @Test
+    void testQueryEntityIncludesRelationshipAndBlacklistState() {
+        String parentUuid = createSecurityEntity();
+        String childUuid = createSecurityEntity();
+        client.setEntityRelationship(childUuid, parentUuid, EntityRelationshipType.CHILD);
+
+        String evidenceUuid = createSecurityEvidence(childUuid);
+        String blacklistUuid = client.blacklistEntity(childUuid, evidenceUuid, IncidentType.SPAM,
+            (int) (System.currentTimeMillis() / 1000 + 3600));
+        createdBlacklistRecords.add(blacklistUuid);
+
+        EntityQueryResult result = client.queryEntity(childUuid);
+
+        assertEquals(childUuid, result.entityRecord().uuid());
+        assertTrue(result.relatedEntities().stream().anyMatch(entity -> entity.uuid().equals(parentUuid)));
+        assertTrue(result.activeBlacklists().stream().anyMatch(record -> record.uuid().equals(blacklistUuid)));
+        assertNotNull(result.suggestedAction());
+        assertNotNull(result.suggestedLiftTimestamp());
+    }
+
+    @Test
+    void testQueryEntityValidation() {
+        assertThrows(IllegalArgumentException.class, () -> client.queryEntity(""));
+        assertThrows(IllegalArgumentException.class, () -> client.queryEntity(null));
+    }
+
 
     @Test
     void testDuplicateEntityPushMergesMetadata() {
