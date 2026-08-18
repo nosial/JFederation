@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.6] - 2026-08-17
 
-This is an ongoing update
+This update introduces changes from the specification
 
 ### Added
  - Added `ServerInformation` public-access capability metadata for entity metadata, content scanning, entity queries,
