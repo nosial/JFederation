@@ -1,8 +1,12 @@
 package net.nosial.jfederation;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.IncidentType;
+import net.nosial.jfederation.enums.RecordType;
 import net.nosial.jfederation.records.ServerInformation;
+
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,6 +21,44 @@ class ServerInformationTest extends FederationClientTestBase {
         assertFalse(info.serverName().isEmpty());
         assertNotNull(info.apiVersion());
         assertFalse(info.apiVersion().isEmpty());
+    }
+
+    @Test
+    void testServerInformationDeserializesPublicCapabilityMetadata() {
+        ServerInformation info = Json.readValue("""
+            {
+              "name": "Capability Test Server",
+              "api_version": "1.0",
+              "public_audit_logs": true,
+              "public_evidence": false,
+              "public_blacklist": true,
+              "public_entities": true,
+              "public_reports": false,
+              "public_entity_metadata": false,
+              "public_scan_content": true,
+              "public_query_entity": true,
+              "search_enabled": true,
+              "public_search": false,
+              "search_types": ["ENTITY", "EVIDENCE", "OPERATOR"],
+              "public_search_types": ["ENTITY"],
+              "public_audit_logs_visibility": [],
+              "audit_log_records": 0,
+              "blacklist_records": 0,
+              "known_entities": 0,
+              "evidence_records": 0,
+              "file_attachment_records": 0,
+              "operators": 0,
+              "reports": 0
+            }
+            """, ServerInformation.class);
+
+        assertFalse(info.publicEntityMetadata());
+        assertTrue(info.publicScanContent());
+        assertTrue(info.publicQueryEntity());
+        assertTrue(info.searchEnabled());
+        assertFalse(info.publicSearch());
+        assertEquals(List.of(RecordType.ENTITY, RecordType.EVIDENCE, RecordType.OPERATOR), info.searchTypes());
+        assertEquals(List.of(RecordType.ENTITY), info.publicSearchTypes());
     }
 
     @Test
