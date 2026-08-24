@@ -207,8 +207,7 @@ class DataValidationTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("blacklist-validation.com", "blacklist_user");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Test evidence", "Test note", "test");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         int[] invalidExpirations = {
             -1,
@@ -217,7 +216,7 @@ class DataValidationTest extends FederationClientTestBase {
 
         for (int expiration : invalidExpirations) {
             try {
-                String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expiration);
+                String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expiration);
                 if (blacklistUuid != null) {
                     createdBlacklistRecords.add(blacklistUuid);
                 }
@@ -231,28 +230,28 @@ class DataValidationTest extends FederationClientTestBase {
     }
 
     @Test
-    void testBlacklistWithNonExistentEvidence() {
+    void testBlacklistWithNonExistentReport() {
         String entityUuid = client.pushEntity("blacklist-invalid-evidence.com", "invalid_evidence_user");
         createdEntities.add(entityUuid);
 
-        String fakeEvidenceUuid = "01234567-89ab-cdef-0123-456789abcdef";
+        String fakeReportUuid = "01234567-89ab-cdef-0123-456789abcdef";
 
         try {
-            client.blacklistEntity(entityUuid, fakeEvidenceUuid, IncidentType.SPAM, (int) (System.currentTimeMillis() / 1000 + 3600));
-            fail("Expected FederationClientException for non-existent evidence");
+            client.blacklistEntity(entityUuid, fakeReportUuid, IncidentType.SPAM, (int) (System.currentTimeMillis() / 1000 + 3600));
+            fail("Expected FederationClientException for non-existent report");
         } catch (FederationClientException e) {
             assertTrue(e.getStatusCode() == 400 || e.getStatusCode() == 404,
-                "Expected 400 or 404 for non-existent evidence, got " + e.getStatusCode());
+                "Expected 400 or 404 for non-existent report, got " + e.getStatusCode());
         }
     }
 
     @Test
     void testBlacklistWithNonExistentEntity() {
         String fakeEntityUuid = "01234567-89ab-cdef-0123-456789abcdef";
-        String fakeEvidenceUuid = "01234567-89ab-cdef-0123-456789abcdef";
+        String fakeReportUuid = "01234567-89ab-cdef-0123-456789abcdef";
 
         try {
-            client.blacklistEntity(fakeEntityUuid, fakeEvidenceUuid, IncidentType.SPAM, (int) (System.currentTimeMillis() / 1000 + 3600));
+            client.blacklistEntity(fakeEntityUuid, fakeReportUuid, IncidentType.SPAM, (int) (System.currentTimeMillis() / 1000 + 3600));
             fail("Expected FederationClientException for non-existent entity");
         } catch (FederationClientException e) {
             assertTrue(e.getStatusCode() == 400 || e.getStatusCode() == 404,

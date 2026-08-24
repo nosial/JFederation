@@ -207,11 +207,10 @@ class ClientFunctionalityTest extends FederationClientTestBase {
         String entityUuid = opClient.pushEntity("list-op-bl-" + randomUuid().substring(0, 8) + ".com", "op_bl_user");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = opClient.submitEvidence(entityUuid, "Operator blacklist evidence", "Note", "op_bl");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid, opClient);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = opClient.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = opClient.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         List<BlacklistRecord> opBlacklists = client.listOperatorBlacklist(opUuid, 1, 100, true);

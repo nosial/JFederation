@@ -224,10 +224,9 @@ class PaginationTest extends FederationClientTestBase {
             String entityUuid = client.pushEntity("blacklist-pagination-" + i + "-" + randomUuid().substring(0, 4) + ".com", "blacklist_user_" + i);
             createdEntities.add(entityUuid);
 
-            String evidenceUuid = client.submitEvidence(entityUuid, "Blacklist evidence " + i, "Blacklist note " + i, "blacklist_pagination");
-            createdEvidenceRecords.add(evidenceUuid);
+            String reportUuid = createReportForEntity(entityUuid);
 
-            String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int) (System.currentTimeMillis() / 1000 + 3600));
+            String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int) (System.currentTimeMillis() / 1000 + 3600));
             createdBlacklistRecords.add(blacklistUuid);
             blacklistUuids.add(blacklistUuid);
         }

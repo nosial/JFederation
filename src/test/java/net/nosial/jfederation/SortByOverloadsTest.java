@@ -119,10 +119,9 @@ class SortByOverloadsTest extends FederationClientTestBase {
     @Test
     void testListOperatorBlacklistWithByOnly() {
         String entityUuid = pushUniqueEntity("by-op-blacklist", "by_op_blacklist");
-        String evidenceUuid = client.submitEvidence(entityUuid, "By overload operator blacklist evidence", null, null);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
         String selfUuid = client.getSelf().uuid();
 
@@ -176,10 +175,9 @@ class SortByOverloadsTest extends FederationClientTestBase {
     @Test
     void testListEntityBlacklistRecordsWithByOnly() {
         String entityUuid = pushUniqueEntity("by-ent-blacklist", "by_ent_blacklist");
-        String evidenceUuid = client.submitEvidence(entityUuid, "By overload entity blacklist evidence", null, null);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         List<BlacklistRecord> results = client.listEntityBlacklistRecords(entityUuid, 1, 50, false, "created");
@@ -262,10 +260,9 @@ class SortByOverloadsTest extends FederationClientTestBase {
     @Test
     void testListBlacklistRecordsOverloads() {
         String entityUuid = pushUniqueEntity("by-blacklist", "by_blacklist");
-        String evidenceUuid = client.submitEvidence(entityUuid, "By overload blacklist evidence", null, null);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         List<BlacklistRecord> basic = client.listBlacklistRecords(1, 100);
@@ -283,10 +280,9 @@ class SortByOverloadsTest extends FederationClientTestBase {
         String host = uniqueHost("by-search-blacklist");
         String entityUuid = client.pushEntity(host, "by_search_blacklist");
         createdEntities.add(entityUuid);
-        String evidenceUuid = client.submitEvidence(entityUuid, "By overload search blacklist evidence", null, null);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         List<BlacklistRecord> active = client.searchBlacklist(host, 1, 50, "ACTIVE", "created");

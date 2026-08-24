@@ -66,7 +66,8 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
             .anyMatch(e -> e.uuid().equals(evidenceUuid)));
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String reportUuid = createReportForEntity(entityUuid);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
         assertTrue(client.listBlacklistRecords(1, 100, true, "ACTIVE").stream()
             .anyMatch(b -> b.uuid().equals(blacklistUuid)));
@@ -93,7 +94,8 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
         createdEvidenceRecords.add(evidenceUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String reportUuid = createReportForEntity(entityUuid);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         ReportSubmission submission = client.submitReport(entityUuid, "entity sublist report", IncidentType.SPAM, "entity sublist message");
@@ -121,7 +123,8 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
         createdEvidenceRecords.add(evidenceUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String reportUuid = createReportForEntity(entityUuid);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         ReportSubmission submission = client.submitReport(entityUuid, "operator sublist report", IncidentType.SPAM, "operator sublist message");
@@ -170,7 +173,8 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
         createdEvidenceRecords.add(evidenceUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String reportUuid = createReportForEntity(entityUuid);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         ReportSubmission submission = client.submitReport(entityUuid, keyword + " report", IncidentType.SPAM, keyword + " message");

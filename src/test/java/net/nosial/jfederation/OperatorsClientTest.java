@@ -503,11 +503,11 @@ class OperatorsClientTest extends FederationClientTestBase {
     void testSecurityClientOnlyOperatorCannotPerformPrivilegedActions() {
         FederationClient clientOnly = createLimitedOperator("client_only_priv", true);
         String entityUuid = createSecurityEntity();
-        String evidenceUuid = createSecurityEvidence(entityUuid);
+        String reportUuid = createReportForEntity(entityUuid);
         String blacklistUuid = createSecurityBlacklist(entityUuid);
 
         expectRequestFailure(() -> { clientOnly.createOperator("child"); }, 403);
-        expectRequestFailure(() -> clientOnly.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600)), 403);
+        expectRequestFailure(() -> clientOnly.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600)), 403);
         expectRequestFailure(() -> clientOnly.deleteEntity(entityUuid), 403);
         expectRequestFailure(() -> clientOnly.deleteBlacklistRecord(blacklistUuid), 403);
         expectRequestFailure(() -> clientOnly.liftBlacklistRecord(blacklistUuid), 403);

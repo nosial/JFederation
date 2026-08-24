@@ -302,11 +302,10 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host, id);
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Spam evidence for author", "Test note", "spam", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
 
         ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
@@ -322,10 +321,9 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host, id);
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Malware evidence for high risk", "Test note", "malware", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
-        client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.MALWARE, null);
+        client.blacklistEntity(entityUuid, reportUuid, IncidentType.MALWARE, null);
 
         ScannedContent scanned = client.scanContent("Malicious content with malware indicators and dangerous payload signatures", entityUuid, null, null);
 
@@ -445,10 +443,9 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host);
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Malware evidence for resolved entity", "Test note", "malware", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
-        client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.MALWARE, null);
+        client.blacklistEntity(entityUuid, reportUuid, IncidentType.MALWARE, null);
 
         String text = "Visit " + host + " for updates. " + BENIGN_SAMPLE_TEXT;
         ScannedContent scanned = client.scanContent(text, null, null, null);
@@ -476,11 +473,10 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host, id);
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Temporary spam evidence", "Test note", "spam", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
 
         ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
@@ -499,10 +495,9 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host, id);
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Permanent spam evidence", "Test note", "spam", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
-        client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, null);
+        client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, null);
 
         ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
@@ -519,15 +514,13 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host, id);
         createdEntities.add(entityUuid);
 
-        String tempEvidence = client.submitEvidence(entityUuid, "Temporary evidence", "Test note", "spam", false);
-        createdEvidenceRecords.add(tempEvidence);
+        String tempReport = createReportForEntity(entityUuid);
 
-        String permEvidence = client.submitEvidence(entityUuid, "Permanent evidence", "Test note", "malware", false);
-        createdEvidenceRecords.add(permEvidence);
+        String permReport = createReportForEntity(entityUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        client.blacklistEntity(entityUuid, tempEvidence, IncidentType.SPAM, expires);
-        client.blacklistEntity(entityUuid, permEvidence, IncidentType.MALWARE, null);
+        client.blacklistEntity(entityUuid, tempReport, IncidentType.SPAM, expires);
+        client.blacklistEntity(entityUuid, permReport, IncidentType.MALWARE, null);
 
         ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
@@ -549,10 +542,9 @@ class ContentScanTest extends FederationClientTestBase {
 
         client.setEntityRelationship(childUuid, parentUuid, EntityRelationshipType.CHILD);
 
-        String evidenceUuid = client.submitEvidence(parentUuid, "Parent is malicious", "Test note", "malware", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(parentUuid);
 
-        client.blacklistEntity(parentUuid, evidenceUuid, IncidentType.MALWARE, null);
+        client.blacklistEntity(parentUuid, reportUuid, IncidentType.MALWARE, null);
 
         ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, childUuid, null, null);
 
@@ -582,10 +574,9 @@ class ContentScanTest extends FederationClientTestBase {
 
         client.setEntityRelationship(childUuid, parentUuid, EntityRelationshipType.CHILD);
 
-        String evidenceUuid = client.submitEvidence(parentUuid, "Parent malware evidence", "Test note", "malware", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(parentUuid);
 
-        client.blacklistEntity(parentUuid, evidenceUuid, IncidentType.MALWARE, null);
+        client.blacklistEntity(parentUuid, reportUuid, IncidentType.MALWARE, null);
 
         String text = "Visit " + childHost + " for updates. " + BENIGN_SAMPLE_TEXT;
         ScannedContent scanned = client.scanContent(text, null, null, null);
@@ -614,11 +605,10 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host);
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Temporary spam evidence", "Test note", "spam", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
 
         String text = "Visit " + host + " for updates. " + BENIGN_SAMPLE_TEXT;
         ScannedContent scanned = client.scanContent(text, null, null, null);
@@ -648,10 +638,9 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host, id);
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Malware evidence", "Test note", "malware", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
-        client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.MALWARE, null);
+        client.blacklistEntity(entityUuid, reportUuid, IncidentType.MALWARE, null);
 
         ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
@@ -665,10 +654,9 @@ class ContentScanTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity(host);
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Malware evidence", "Test note", "malware", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
-        client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.MALWARE, null);
+        client.blacklistEntity(entityUuid, reportUuid, IncidentType.MALWARE, null);
 
         String text = "Visit " + host + " for updates. " + BENIGN_SAMPLE_TEXT;
         ScannedContent scanned = client.scanContent(text, null, null, null);

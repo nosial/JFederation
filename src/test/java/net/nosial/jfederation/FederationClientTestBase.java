@@ -5,6 +5,7 @@ import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.OperatorCreated;
 import net.nosial.jfederation.records.OperatorRecord;
+import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.ReportSubmission;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
@@ -135,10 +136,24 @@ public abstract class FederationClientTestBase {
         return createSecurityBlacklist(entityUuid, this.client);
     }
 
+    protected String createReportForEntity(String entityUuid) {
+        return createReportForEntity(entityUuid, this.client);
+    }
+
+    protected String createReportForEntity(String entityUuid, FederationClient client) {
+        ReportSubmission submission = client.submitReport(entityUuid, "Security test report", IncidentType.SPAM);
+        String reportUuid = submission.getReport().uuid();
+        createdReports.add(reportUuid);
+        for (EvidenceRecord evidence : submission.getEvidence()) {
+            createdEvidenceRecords.add(evidence.uuid());
+        }
+        return reportUuid;
+    }
+
     protected String createSecurityBlacklist(String entityUuid, FederationClient client) {
-        String evidenceUuid = createSecurityEvidence(entityUuid, false, client);
+        String reportUuid = createReportForEntity(entityUuid, client);
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
         return blacklistUuid;
     }

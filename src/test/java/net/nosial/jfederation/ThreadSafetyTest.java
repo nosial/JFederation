@@ -25,11 +25,10 @@ class ThreadSafetyTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("concurrent-read.com", "read_test");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Concurrent read test", "test", "concurrent");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
@@ -191,11 +190,10 @@ class ThreadSafetyTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("concurrent-delete.com", "delete_test");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Delete test evidence", "test", "delete");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         FederationClient altClient = new FederationClient(serverEndpoint, serverAccessToken);
@@ -371,8 +369,9 @@ class ThreadSafetyTest extends FederationClientTestBase {
                 "Cross lifecycle evidence " + i, "Bulk test", "cross");
             evidenceUuids.add(evidenceUuid);
 
+            String reportUuid = createReportForEntity(entityUuid);
             int expires = (int) (System.currentTimeMillis() / 1000 + 7200);
-            String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid,
+            String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid,
                 i % 2 == 0 ? IncidentType.SPAM : IncidentType.SCAM, expires);
             blacklistUuids.add(blacklistUuid);
         }
@@ -471,7 +470,8 @@ class ThreadSafetyTest extends FederationClientTestBase {
         assertFalse(publicEvidence.confidential());
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String reportUuid = createReportForEntity(entityUuid);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         BlacklistRecord blacklistRecord = client.getBlacklistRecord(blacklistUuid);
@@ -692,7 +692,8 @@ class ThreadSafetyTest extends FederationClientTestBase {
                     allEvidence.add(evUuid);
 
                     int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-                    String bUuid = client.blacklistEntity(eUuid, evUuid, IncidentType.SCAM, expires);
+                    String reportUuid = createReportForEntity(eUuid);
+                    String bUuid = client.blacklistEntity(eUuid, reportUuid, IncidentType.SCAM, expires);
                     allBlacklists.add(bUuid);
 
                     successCount.incrementAndGet();
@@ -787,7 +788,8 @@ class ThreadSafetyTest extends FederationClientTestBase {
             evidenceSet.add(evUuid);
 
             int expires = (int) (System.currentTimeMillis() / 1000 + 3600 + (i * 1000));
-            String bUuid = client.blacklistEntity(firstEntity, evUuid, IncidentType.SPAM, expires);
+            String reportUuid = createReportForEntity(firstEntity);
+            String bUuid = client.blacklistEntity(firstEntity, reportUuid, IncidentType.SPAM, expires);
             blacklistSet.add(bUuid);
         }
 

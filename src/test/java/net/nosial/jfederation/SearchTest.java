@@ -124,11 +124,10 @@ class SearchTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("search-blacklist-" + randomUuid().substring(0, 8) + ".com", "bl_user");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "bl content", "bl note", "bl_tag");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         String prefix = entityUuid.substring(0, 8);
@@ -471,11 +470,10 @@ class SearchTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("multi-test-" + randomUuid().substring(0, 8) + ".com", "multi_user");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "multi type evidence content", "multi note", "multi_tag");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         List<SearchResult> results = client.search("multi", null, 1, 100);
@@ -580,7 +578,7 @@ class SearchTest extends FederationClientTestBase {
         createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, submission.getReport().uuid(), IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         OperatorCreated operatorUuidCreated = client.createOperator(keyword + "_operator");

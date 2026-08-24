@@ -355,7 +355,8 @@ class EntitiesClientTest extends FederationClientTestBase {
         createdEvidenceRecords.add(evidenceUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String reportUuid = createReportForEntity(entityUuid);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         assertNotNull(client.getEntityRecord(entityUuid));
@@ -368,8 +369,8 @@ class EntitiesClientTest extends FederationClientTestBase {
         String childUuid = createSecurityEntity();
         client.setEntityRelationship(childUuid, parentUuid, EntityRelationshipType.CHILD);
 
-        String evidenceUuid = createSecurityEvidence(childUuid);
-        String blacklistUuid = client.blacklistEntity(childUuid, evidenceUuid, IncidentType.SPAM,
+        String reportUuid = createReportForEntity(childUuid);
+        String blacklistUuid = client.blacklistEntity(childUuid, reportUuid, IncidentType.SPAM,
             (int) (System.currentTimeMillis() / 1000 + 3600));
         createdBlacklistRecords.add(blacklistUuid);
 

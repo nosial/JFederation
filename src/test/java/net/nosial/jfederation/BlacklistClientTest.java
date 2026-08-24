@@ -19,18 +19,17 @@ class BlacklistClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("blacklist-test-" + randomUuid().substring(0, 8) + ".com", "john_test");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Subscribe to my free crypto exchange!", "Automated Spam Detection", "spam");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         assertNotNull(blacklistUuid);
         createdBlacklistRecords.add(blacklistUuid);
 
         BlacklistRecord rec = client.getBlacklistRecord(blacklistUuid);
         assertNotNull(rec);
         assertEquals(entityUuid, rec.entityUuid());
-        assertEquals(evidenceUuid, rec.evidenceUuid());
+        assertEquals(reportUuid, rec.reportUuid());
         assertNotNull(rec.expires());
         assertEquals(expires, rec.expires().intValue());
         assertFalse(rec.lifted());
@@ -41,10 +40,9 @@ class BlacklistClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("permanent-test-" + randomUuid().substring(0, 8) + ".org", "infected_user");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Detected malware distribution", "Automated Security Scan", "malware");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.MALWARE, null);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.MALWARE, null);
         assertNotNull(blacklistUuid);
         createdBlacklistRecords.add(blacklistUuid);
 
@@ -68,7 +66,7 @@ class BlacklistClientTest extends FederationClientTestBase {
     @Test
     void testBlacklistEntityNegativeExpires() {
         assertThrows(IllegalArgumentException.class,
-            () -> client.blacklistEntity("some-entity-uuid", "some-evidence-uuid", IncidentType.SPAM, -1));
+            () -> client.blacklistEntity("some-entity-uuid", "some-report-uuid", IncidentType.SPAM, -1));
     }
 
     @Test
@@ -76,10 +74,9 @@ class BlacklistClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("delete-bl-" + randomUuid().substring(0, 8) + ".com", "user_to_delete");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Test content for deletion", "Test note", "test");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
 
         assertNotNull(client.getBlacklistRecord(blacklistUuid));
         client.deleteBlacklistRecord(blacklistUuid);
@@ -109,10 +106,9 @@ class BlacklistClientTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("lift-test-" + randomUuid().substring(0, 8) + ".com", "user_to_lift");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Test content for lifting", "Test note", "test");
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
         createdBlacklistRecords.add(blacklistUuid);
 
         assertFalse(client.getBlacklistRecord(blacklistUuid).lifted());
@@ -132,10 +128,9 @@ class BlacklistClientTest extends FederationClientTestBase {
             String entityUuid = client.pushEntity("bl-list-" + i + "-" + randomUuid().substring(0, 8) + ".com", "user_" + i);
             createdEntities.add(entityUuid);
 
-            String evidenceUuid = client.submitEvidence(entityUuid, "Test content " + i, "Test note " + i, "test");
-            createdEvidenceRecords.add(evidenceUuid);
+            String reportUuid = createReportForEntity(entityUuid);
 
-            String blUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
+            String blUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
             createdBlacklistRecords.add(blUuid);
             created.add(blUuid);
         }
@@ -155,15 +150,14 @@ class BlacklistClientTest extends FederationClientTestBase {
             String entityUuid = client.pushEntity("type-test-" + randomUuid().substring(0, 8) + ".com", "user_" + type.getValue());
             createdEntities.add(entityUuid);
 
-            String evidenceUuid = client.submitEvidence(entityUuid, "Test for " + type.getValue(), "Test note", type.getValue());
-            createdEvidenceRecords.add(evidenceUuid);
+            String reportUuid = createReportForEntity(entityUuid);
 
-            String blUuid = client.blacklistEntity(entityUuid, evidenceUuid, type, (int)(System.currentTimeMillis()/1000+3600));
+            String blUuid = client.blacklistEntity(entityUuid, reportUuid, type, (int)(System.currentTimeMillis()/1000+3600));
             createdBlacklistRecords.add(blUuid);
 
             BlacklistRecord rec = client.getBlacklistRecord(blUuid);
             assertEquals(entityUuid, rec.entityUuid());
-            assertEquals(evidenceUuid, rec.evidenceUuid());
+            assertEquals(reportUuid, rec.reportUuid());
         }
     }
 
@@ -179,10 +173,10 @@ class BlacklistClientTest extends FederationClientTestBase {
         FederationClient basicClient = new FederationClient(serverEndpoint, basicOpCreated.accessToken());
 
         String entityUuid = createSecurityEntity();
-        String evidenceUuid = createSecurityEvidence(entityUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         try {
-            basicClient.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
+            basicClient.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
             fail("Expected FederationClientException");
         } catch (FederationClientException e) {
             assertEquals(403, e.getStatusCode());
@@ -196,9 +190,8 @@ class BlacklistClientTest extends FederationClientTestBase {
         for (int i = 0; i < 5; i++) {
             String entityUuid = client.pushEntity("dura-" + i + "-" + randomUuid().substring(0, 8) + ".com", "user_" + i);
             createdEntities.add(entityUuid);
-            String evidenceUuid = client.submitEvidence(entityUuid, "Evidence " + i, "Note " + i, "dura");
-            createdEvidenceRecords.add(evidenceUuid);
-            String blUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+7200));
+            String reportUuid = createReportForEntity(entityUuid);
+            String blUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+7200));
             createdBlacklistRecords.add(blUuid);
             blUuids.add(blUuid);
         }
@@ -219,9 +212,9 @@ class BlacklistClientTest extends FederationClientTestBase {
     @Test
     void testBlacklistRecordIntegrityAfterLift() {
         String entityUuid = createSecurityEntity();
-        String evidenceUuid = createSecurityEvidence(entityUuid);
+        String reportUuid = createReportForEntity(entityUuid);
         int expires = (int) (System.currentTimeMillis() / 1000 + 7200);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         BlacklistRecord original = client.getBlacklistRecord(blacklistUuid);
@@ -231,7 +224,7 @@ class BlacklistClientTest extends FederationClientTestBase {
         BlacklistRecord lifted = client.getBlacklistRecord(blacklistUuid);
         assertTrue(lifted.lifted());
         assertEquals(original.entityUuid(), lifted.entityUuid());
-        assertEquals(original.evidenceUuid(), lifted.evidenceUuid());
+        assertEquals(original.reportUuid(), lifted.reportUuid());
         assertEquals(original.expires(), lifted.expires());
     }
 
@@ -262,8 +255,8 @@ class BlacklistClientTest extends FederationClientTestBase {
     @Test
     void testExtendPermanentBlacklistRecord() {
         String entityUuid = createSecurityEntity();
-        String evidenceUuid = createSecurityEvidence(entityUuid);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, null);
+        String reportUuid = createReportForEntity(entityUuid);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, null);
         createdBlacklistRecords.add(blacklistUuid);
 
         assertNull(client.getBlacklistRecord(blacklistUuid).expires());
@@ -301,11 +294,11 @@ class BlacklistClientTest extends FederationClientTestBase {
     @Test
     void testSecurityBlacklistRequiresManagementPermission() {
         String entityUuid = createSecurityEntity();
-        String evidenceUuid = createSecurityEvidence(entityUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
         FederationClient clientOnly = createLimitedOperator("bl_create_client", false, false, true);
         try {
-            clientOnly.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
+            clientOnly.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
             fail("Client-only should not create blacklists");
         } catch (FederationClientException e) {
             assertEquals(403, e.getStatusCode());
@@ -319,9 +312,8 @@ class BlacklistClientTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         for (int i = 0; i < 3; i++) {
-            String evidenceUuid = client.submitEvidence(entityUuid, "Same type evidence " + i, "Note " + i, "same_" + i);
-            createdEvidenceRecords.add(evidenceUuid);
-            String blUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
+            String reportUuid = createReportForEntity(entityUuid);
+            String blUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
             createdBlacklistRecords.add(blUuid);
         }
 
@@ -335,9 +327,8 @@ class BlacklistClientTest extends FederationClientTestBase {
         createdEntities.add(entityUuid);
 
         for (IncidentType type : IncidentType.values()) {
-            String evidenceUuid = client.submitEvidence(entityUuid, "Evidence for " + type.getValue(), "Note", type.getValue());
-            createdEvidenceRecords.add(evidenceUuid);
-            String blUuid = client.blacklistEntity(entityUuid, evidenceUuid, type, (int)(System.currentTimeMillis()/1000+3600));
+            String reportUuid = createReportForEntity(entityUuid);
+            String blUuid = client.blacklistEntity(entityUuid, reportUuid, type, (int)(System.currentTimeMillis()/1000+3600));
             createdBlacklistRecords.add(blUuid);
             assertEquals(type, client.getBlacklistRecord(blUuid).type());
         }
@@ -350,9 +341,8 @@ class BlacklistClientTest extends FederationClientTestBase {
 
         assertTrue(client.listEntityBlacklistRecords(entityUuid).isEmpty());
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Entity blacklist evidence", "Note", "entity_bl");
-        createdEvidenceRecords.add(evidenceUuid);
-        String blUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
+        String reportUuid = createReportForEntity(entityUuid);
+        String blUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600));
         createdBlacklistRecords.add(blUuid);
 
         assertEquals(1, client.listEntityBlacklistRecords(entityUuid).size());

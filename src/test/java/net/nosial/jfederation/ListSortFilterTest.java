@@ -89,10 +89,9 @@ class ListSortFilterTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("sort-blacklist-" + randomUuid().substring(0, 8) + ".com", "sort_blacklist");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Blacklist evidence", "note", "tag", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         List<BlacklistRecord> active = client.listBlacklistRecords(1, 10, false, "ACTIVE", "created", "DESC");

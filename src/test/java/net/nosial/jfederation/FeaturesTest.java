@@ -129,11 +129,10 @@ class FeaturesTest extends FederationClientTestBase {
 
         String[] blacklistUuids = new String[2];
         for (int i = 0; i < 2; i++) {
-            String evidenceUuid = client.submitEvidence(entityUuid, "Blacklist evidence " + i, "Blacklist note " + i, "blacklist_tag_" + i);
-            createdEvidenceRecords.add(evidenceUuid);
+            String reportUuid = createReportForEntity(entityUuid);
             IncidentType type = (i == 0) ? IncidentType.SPAM : IncidentType.MALWARE;
             int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-            blacklistUuids[i] = client.blacklistEntity(entityUuid, evidenceUuid, type, expires);
+            blacklistUuids[i] = client.blacklistEntity(entityUuid, reportUuid, type, expires);
             createdBlacklistRecords.add(blacklistUuids[i]);
         }
 

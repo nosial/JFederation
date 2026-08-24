@@ -225,13 +225,12 @@ class AuditLogClientTest extends FederationClientTestBase {
         String entityUuid = operatorClient.pushEntity("blacklist-audit-test.com", "blacklist_audit_user");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = operatorClient.submitEvidence(entityUuid, "Audit test evidence", "Audit test", "audit", false);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid, operatorClient);
 
         int initialLogCount = client.listOperatorAuditLogs(operatorUuid, 1, 100).size();
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = operatorClient.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String blacklistUuid = operatorClient.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         operatorClient.liftBlacklistRecord(blacklistUuid);
@@ -354,7 +353,8 @@ class AuditLogClientTest extends FederationClientTestBase {
         createdEvidenceRecords.add(evidenceUuid);
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
-        String blacklistUuid = operatorClient.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM, expires);
+        String reportUuid = createReportForEntity(entityUuid, operatorClient);
+        String blacklistUuid = operatorClient.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
         List<AuditLog> logs = client.listOperatorAuditLogs(operatorUuid, 1, 100);

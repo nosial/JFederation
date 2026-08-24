@@ -49,10 +49,9 @@ class DefaultOverloadsTest extends FederationClientTestBase {
     void testBlacklistEntityWithoutExpires() {
         String entityUuid = client.pushEntity("perm-blacklist-" + randomUuid().substring(0, 8) + ".com", "perm_blacklist");
         createdEntities.add(entityUuid);
-        String evidenceUuid = client.submitEvidence(entityUuid, "Permanent blacklist evidence", null, null);
-        createdEvidenceRecords.add(evidenceUuid);
+        String reportUuid = createReportForEntity(entityUuid);
 
-        String blacklistUuid = client.blacklistEntity(entityUuid, evidenceUuid, IncidentType.SPAM);
+        String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM);
         createdBlacklistRecords.add(blacklistUuid);
 
         BlacklistRecord record = client.getBlacklistRecord(blacklistUuid);
