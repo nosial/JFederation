@@ -310,12 +310,12 @@ against an evidence record.
 ### Blacklist records
 
 Blacklist records are the server's mitigation mechanism, an operator can condemn an entity to the
-blacklist of the server with an incident type and an evidence record backing the decision:
+blacklist of the server with an incident type and a report backing the decision:
 
 | Method                                                                  | Description                                                            |
 |-------------------------------------------------------------------------|------------------------------------------------------------------------|
-| `blacklistEntity(identifier, evidenceUuid, type)`                       | Blacklists an entity permanently                                       |
-| `blacklistEntity(identifier, evidenceUuid, type, expires)`              | Blacklists an entity with an expiration timestamp (Unix epoch seconds) |
+| `blacklistEntity(identifier, reportUuid, type)`                         | Blacklists an entity permanently                                       |
+| `blacklistEntity(identifier, reportUuid, type, expires)`                | Blacklists an entity with an expiration timestamp (Unix epoch seconds) |
 | `listBlacklistRecords(page, limit, includeLifted, category, by, order)` | Lists blacklist entries                                                |
 | `searchBlacklist(query, page, limit, category, by, order)`              | Searches blacklist entries                                             |
 | `getBlacklistRecord(uuid)`                                              | Returns a single blacklist record                                      |
