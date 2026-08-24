@@ -244,11 +244,10 @@ class AuditLogClientTest extends FederationClientTestBase {
         boolean foundBlacklistLift = false;
 
         for (AuditLog log : operatorLogs) {
-            String message = log.message() != null ? log.message().toLowerCase() : "";
-            if (message.contains("blacklist") && message.contains("created")) {
+            if (log.type() == AuditLogType.ENTITY_BLACKLISTED && blacklistUuid.equals(log.blacklistUuid())) {
                 foundBlacklistCreation = true;
             }
-            if (message.contains("blacklist") && (message.contains("lifted") || message.contains("removed"))) {
+            if (log.type() == AuditLogType.BLACKLIST_LIFTED && blacklistUuid.equals(log.blacklistUuid())) {
                 foundBlacklistLift = true;
             }
         }
