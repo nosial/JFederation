@@ -9,7 +9,7 @@ import net.nosial.jfederation.enums.IncidentType;
  * @param uuid the unique blacklist record identifier
  * @param operatorUuid the UUID of the operator who created the blacklist entry
  * @param entityUuid the UUID of the blacklisted entity
- * @param evidenceUuid the UUID of the evidence supporting the blacklist
+ * @param reportUuid the UUID of the report supporting the blacklist
  * @param type the incident type that triggered the blacklist
  * @param lifted whether the blacklist has been lifted
  * @param liftedBy the UUID of the operator who lifted the blacklist, or {@code null}
@@ -20,7 +20,7 @@ public record BlacklistRecord(
     @JsonProperty("uuid") String uuid,
     @JsonProperty("operator") String operatorUuid,
     @JsonProperty("entity") String entityUuid,
-    @JsonProperty("evidence") String evidenceUuid,
+    @JsonProperty("report") String reportUuid,
     @JsonProperty("type") IncidentType type,
     @JsonProperty("lifted") boolean lifted,
     @JsonProperty("lifted_by") String liftedBy,

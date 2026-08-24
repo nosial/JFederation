@@ -3261,38 +3261,38 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
-     * Blacklists an entity with the given evidence and incident type, without an expiration
+     * Blacklists an entity with the given supporting report and incident type, without an expiration
      * (permanent blacklist).
      *
      * @param entityIdentifier The entity UUID, hostname, or hash to blacklist
-     * @param evidenceUuid The UUID of the supporting evidence record
+     * @param reportUuid The UUID of the supporting report record
      * @param type The incident type
      * @return The UUID of the created blacklist record
      */
-    public String blacklistEntity(String entityIdentifier, String evidenceUuid, IncidentType type)
+    public String blacklistEntity(String entityIdentifier, String reportUuid, IncidentType type)
     {
-        return blacklistEntity(entityIdentifier, evidenceUuid, type, null);
+        return blacklistEntity(entityIdentifier, reportUuid, type, null);
     }
 
     /**
-     * Blacklists an entity with the given evidence, incident type, and optional expiration.
+     * Blacklists an entity with the given supporting report, incident type, and optional expiration.
      *
      * @param entityIdentifier The entity UUID, hostname, or hash to blacklist
-     * @param evidenceUuid The UUID of the supporting evidence record
+     * @param reportUuid The UUID of the supporting report record
      * @param type The incident type
      * @param expires The expiration timestamp (Unix epoch seconds), or {@code null} for permanent
      * @return The UUID of the created blacklist record
      */
-    public String blacklistEntity(String entityIdentifier, String evidenceUuid, IncidentType type, Integer expires)
+    public String blacklistEntity(String entityIdentifier, String reportUuid, IncidentType type, Integer expires)
     {
         if (entityIdentifier == null || entityIdentifier.isEmpty())
         {
             throw new IllegalArgumentException("The entity identifier must not be empty");
         }
 
-        if (evidenceUuid == null || evidenceUuid.isEmpty())
+        if (reportUuid == null || reportUuid.isEmpty())
         {
-            throw new IllegalArgumentException("The evidence UUID must not be empty");
+            throw new IllegalArgumentException("The report UUID must not be empty");
         }
 
         if (expires != null && expires < 0)
@@ -3302,7 +3302,7 @@ public final class FederationClient implements AutoCloseable
 
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("entity_identifier", entityIdentifier);
-        params.put("evidence_uuid", evidenceUuid);
+        params.put("report_uuid", reportUuid);
         params.put("type", type.getValue());
         params.put("expires", expires);
 
