@@ -1,7 +1,7 @@
 package net.nosial.jfederation.records;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.RecordType;
 

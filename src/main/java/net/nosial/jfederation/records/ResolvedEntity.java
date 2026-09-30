@@ -1,7 +1,7 @@
 package net.nosial.jfederation.records;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import net.nosial.jfederation.classes.Json;
 
 import java.util.Collections;
@@ -24,7 +24,7 @@ public record ResolvedEntity(
     @JsonProperty("parent_entity") JsonNode parentEntityNode)
 {
     /**
-     * Deserialises and returns the resolved entity record.
+     * Deserializes and returns the resolved entity record.
      *
      * @return An {@link EntityRecord} populated from the server response
      */
@@ -33,7 +33,7 @@ public record ResolvedEntity(
     }
 
     /**
-     * Deserialises and returns the entity's position in the scanned text.
+     * Deserializes and returns the entity's position in the scanned text.
      *
      * @return A {@link ResolvedEntityPosition}, or {@code null} if not present
      */
@@ -45,7 +45,7 @@ public record ResolvedEntity(
     }
 
     /**
-     * Deserialises and returns the active blacklist records on this entity.
+     * Deserializes and returns the active blacklist records on this entity.
      *
      * @return A list of {@link BlacklistRecord} entries, or an empty list if none
      */
@@ -59,7 +59,7 @@ public record ResolvedEntity(
     }
 
     /**
-     * Deserialises and returns the parent resolved entity, if one exists.
+     * Deserializes and returns the parent resolved entity, if one exists.
      *
      * @return A {@link ResolvedEntity}, or {@code null} if there is no parent
      */

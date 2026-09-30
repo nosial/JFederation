@@ -1,7 +1,7 @@
 package net.nosial.jfederation.records;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.SuggestedAction;
 
@@ -31,7 +31,7 @@ public record ScannedContent(
     @JsonProperty("scan_results") Map<String, Double> scanResults
 ) {
     /**
-     * Deserialises and returns the resolved entities found in the scanned content.
+     * Deserializes and returns the resolved entities found in the scanned content.
      *
      * @return A list of {@link ResolvedEntity} entries, or an empty list if none
      */
@@ -45,7 +45,7 @@ public record ScannedContent(
     }
 
     /**
-     * Deserialises and returns the author entity.
+     * Deserializes and returns the author entity.
      *
      * @return A {@link ResolvedEntity}, or {@code null} if not present
      */
@@ -57,7 +57,7 @@ public record ScannedContent(
     }
 
     /**
-     * Deserialises and returns the content classification.
+     * Deserializes and returns the content classification.
      *
      * @return A {@link ContentClassification}, or {@code null} if not present
      */

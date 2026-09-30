@@ -1,8 +1,8 @@
 package net.nosial.jfederation.records;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 import net.nosial.jfederation.classes.Json;
 
 import java.util.Collections;
@@ -22,7 +22,7 @@ public record ReportSubmission(
 )
 {
     /**
-     * Deserialises and returns the created report record.
+     * Deserializes and returns the created report record.
      *
      * @return A {@link ReportRecord} populated from the server response
      */
@@ -32,7 +32,7 @@ public record ReportSubmission(
     }
 
     /**
-     * Deserialises and returns the evidence records created with the report submission.
+     * Deserializes and returns the evidence records created with the report submission.
      *
      * @return A list of {@link EvidenceRecord} entries populated from the server response
      */
