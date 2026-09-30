@@ -6,9 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [1.0.8] - Ongoing
+## [1.0.8] - 2026-09-30
 
-This is an ongoing update
+Following versions `v1.0-R2` and `v1.0-R3` of the OFD Specification.
+
+### Added
+ - `ServerInformation.allowIllegalContent` (`allow_illegal_content`) and `ServerInformation.isIllegalContentAllowed()`.
+   A server that declines illegal content rejects `ILLEGAL_CONTENT` reports with HTTP 403; servers that don't publish
+   the member are treated as accepting them.
+
+### Changed
+ - `setEntityRelationship()` names its second parameter `relatedEntityIdentifier`, as it accepts any entity identifier
+   form, not only a UUID.
+
+### Removed
+ - `OperatorRecord.accessToken`, which is not part of an operator record and is no longer returned by the server.
+   The access token of a new operator is still available from `OperatorCreated.accessToken()`.
 
 
 
