@@ -1,7 +1,7 @@
 package net.nosial.jfederation.records;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.EntityRelationshipType;
 
@@ -51,11 +51,11 @@ public record EntityRecord(
         }
 
         JsonNode metadataNode = metadata;
-        if (metadata.isTextual())
+        if (metadata.isString())
         {
             try
             {
-                metadataNode = Json.mapper().readTree(metadata.asText());
+                metadataNode = Json.mapper().readTree(metadata.asString());
             }
             catch (Exception e)
             {
