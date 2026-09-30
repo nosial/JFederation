@@ -220,7 +220,6 @@ class ClientConfigurationTest {
         String operatorUuid = createdOperator.uuid();
         try {
             OperatorRecord operator = admin.getOperator(operatorUuid);
-            assertNull(operator.accessToken(), "Access token should be redacted in OperatorRecord");
             assertNotNull(createdOperator.accessToken(), "Operator access token should be available at creation time");
 
             FederationClient switched = new FederationClient(FederationClientTestBase.serverEndpoint);

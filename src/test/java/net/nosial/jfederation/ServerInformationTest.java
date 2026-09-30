@@ -62,6 +62,17 @@ class ServerInformationTest extends FederationClientTestBase {
     }
 
     @Test
+    void testServerInformationDeserializesAllowIllegalContent() {
+        assertFalse(Json.readValue("{\"allow_illegal_content\": false}", ServerInformation.class).isIllegalContentAllowed());
+        assertTrue(Json.readValue("{\"allow_illegal_content\": true}", ServerInformation.class).isIllegalContentAllowed());
+
+        // Servers predating the member accept every incident type
+        ServerInformation legacy = Json.readValue("{\"name\": \"Legacy Server\"}", ServerInformation.class);
+        assertNull(legacy.allowIllegalContent());
+        assertTrue(legacy.isIllegalContentAllowed());
+    }
+
+    @Test
     void testServerInformationConsistency() {
         ServerInformation info1 = client.getServerInformation();
         for (int i = 0; i < 5; i++) {

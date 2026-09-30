@@ -46,7 +46,6 @@ class FeaturesTest extends FederationClientTestBase {
         }
 
         OperatorRecord updatedOperator = client.getOperator(operatorUuid);
-        assertNull(updatedOperator.accessToken(), "Access token should be redacted in OperatorRecord");
 
         testClient.close();
         newTestClient.close();

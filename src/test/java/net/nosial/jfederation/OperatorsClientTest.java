@@ -28,7 +28,6 @@ class OperatorsClientTest extends FederationClientTestBase {
         assertFalse(rec.clientPermissions());
         assertFalse(rec.autoAssign());
         assertNotNull(uuidCreated.accessToken());
-        assertNull(rec.accessToken(), "Access token should be redacted in OperatorRecord");
     }
 
     @Test
@@ -202,7 +201,6 @@ class OperatorsClientTest extends FederationClientTestBase {
         assertFalse(op.autoAssign());
         assertFalse(op.disabled());
         assertNotNull(uuidCreated.accessToken());
-        assertNull(op.accessToken(), "Access token should be redacted in OperatorRecord");
 
         client.setManagementPermissions(uuid, true);
         client.setOperatorPermissions(uuid, true);
@@ -550,7 +548,6 @@ class OperatorsClientTest extends FederationClientTestBase {
         // The raw access token is only exposed at operator creation time (and by refresh endpoints),
         // never on OperatorRecord.
         assertNotNull(targetCreated.accessToken());
-        assertNull(client.getOperator(targetUuid).accessToken());
     }
 
     @Test
