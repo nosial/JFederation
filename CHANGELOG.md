@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.0.9] - Ongoing
+
+This is an ongoing update
+
+
+
 ## [1.0.8] - 2026-09-30
 
 Following versions `v1.0-R2` and `v1.0-R3` of the OFD Specification.
@@ -22,7 +28,6 @@ Following versions `v1.0-R2` and `v1.0-R3` of the OFD Specification.
 ### Removed
  - `OperatorRecord.accessToken`, which is not part of an operator record and is no longer returned by the server.
    The access token of a new operator is still available from `OperatorCreated.accessToken()`.
-
 
 
 ## [1.0.7] - 2026-08-24
