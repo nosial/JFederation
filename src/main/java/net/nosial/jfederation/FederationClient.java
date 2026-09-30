@@ -1,7 +1,7 @@
 package net.nosial.jfederation;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.ClassificationFlag;
 import net.nosial.jfederation.enums.EntityRelationshipType;
@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Thread-safe API client for interacting with a Federation server. Every public method corresponds
- * to a REST endpoint and handles serialisation, authentication, and error mapping.
+ * to a REST endpoint and handles serialization, authentication, and error mapping.
  *
  * <p>Instances are created with a server endpoint and optional access token, and should be closed
  * via {@link #close()} when no longer needed to release the underlying HTTP connection pool.
@@ -295,9 +295,9 @@ public final class FederationClient implements AutoCloseable
         {
             int statusCode = response.code();
             ResponseBody responseBody = response.body();
-            String responseString = responseBody != null ? responseBody.string() : "";
+            String responseString = responseBody.string();
 
-            MediaType contentType = responseBody != null ? responseBody.contentType() : null;
+            MediaType contentType = responseBody.contentType();
             if (contentType != null && (!contentType.type().equals("application") || !contentType.subtype().equals("json")))
             {
                 if (!responseString.trim().startsWith("{"))
@@ -326,7 +326,7 @@ public final class FederationClient implements AutoCloseable
                     JsonNode errorNode = Json.readTree(responseString);
                     if (errorNode.has("message"))
                     {
-                        msg = errorMessage + ", " + errorNode.get("message").asText() + " received response code: " + statusCode;
+                        msg = errorMessage + ", " + errorNode.get("message").asString() + " received response code: " + statusCode;
                     }
                 }
                 catch (Exception e)
@@ -623,7 +623,7 @@ public final class FederationClient implements AutoCloseable
         }
 
         Map<String, Object> params = new LinkedHashMap<>();
-        params.put("evidence", evidence.size() == 1 ? evidence.get(0) : evidence);
+        params.put("evidence", evidence.size() == 1 ? evidence.getFirst() : evidence);
         if (author != null) params.put("author", author);
         if (topK != null) params.put("top_k", topK);
         if (threshold != null) params.put("threshold", threshold);
@@ -1305,7 +1305,7 @@ public final class FederationClient implements AutoCloseable
     public String generateAccessToken(boolean update)
     {
         JsonNode node = makeRequest("POST", "operators/refresh", null, 200, "Failed to generate Access token");
-        String newToken = node.asText();
+        String newToken = node.asString();
 
         if (update)
         {
@@ -1340,7 +1340,7 @@ public final class FederationClient implements AutoCloseable
 
         JsonNode node = makeRequest("POST", "operators/" + operatorUuid + "/refresh", null, 200,
             "Failed to generate Access token for operator with UUID " + operatorUuid);
-        return node.asText();
+        return node.asString();
     }
 
     /**
@@ -2154,7 +2154,7 @@ public final class FederationClient implements AutoCloseable
 
         JsonNode node = makeRequest("POST", "entities", params, new int[]{200, 201},
             "Failed to push entity with domain " + host);
-        return node.asText();
+        return node.asString();
     }
 
     /**
@@ -2547,7 +2547,7 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
-     * Submits evidence with confidentiality flag but no metadata.
+     * Submits evidence with a confidentiality flag but no metadata.
      *
      * @param entityIdentifier The entity UUID, hostname, or hash
      * @param textContent The evidence text content
@@ -2606,9 +2606,8 @@ public final class FederationClient implements AutoCloseable
         if (metadata != null) params.put("metadata", metadata);
         if (classification != null) params.put("classification", classification.getValue());
 
-        JsonNode node = makeRequest("POST", "evidence", params, 201,
-            "Failed to submit evidence for entity " + entityIdentifier);
-        return node.asText();
+        JsonNode node = makeRequest("POST", "evidence", params, 201, "Failed to submit evidence for entity " + entityIdentifier);
+        return node.asString();
     }
 
     /**
@@ -2891,7 +2890,7 @@ public final class FederationClient implements AutoCloseable
 
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("reporting_entity", reportingEntity);
-        params.put("evidence", evidence.size() == 1 ? evidence.get(0) : evidence);
+        params.put("evidence", evidence.size() == 1 ? evidence.getFirst() : evidence);
         params.put("incident_type", incidentType.getValue());
         if (reportMessage != null) params.put("report_message", reportMessage);
 
@@ -3308,7 +3307,7 @@ public final class FederationClient implements AutoCloseable
 
         JsonNode node = makeRequest("POST", "blacklist", params, 201,
             "Failed to blacklist entity " + entityIdentifier);
-        return node.asText();
+        return node.asString();
     }
 
     /**
@@ -3721,16 +3720,25 @@ public final class FederationClient implements AutoCloseable
                 String[] parts = contentDisposition.split("filename=");
                 if (parts.length > 1)
                 {
-                    filename = parts[1].replaceAll("[\"';]", "").trim();
+                    // Only keep the final path segment so a server-supplied name cannot escape the directory
+                    String suggested = parts[1].replaceAll("[\"';]", "").trim();
+                    suggested = suggested.substring(Math.max(suggested.lastIndexOf('/'), suggested.lastIndexOf('\\')) + 1);
+                    if (!suggested.isEmpty() && !suggested.equals(".") && !suggested.equals(".."))
+                    {
+                        filename = suggested;
+                    }
                 }
             }
 
-            String finalFilePath = dir.getAbsolutePath() + File.separator + filename;
-            ResponseBody body = response.body();
-            if (body == null)
+            Path directory = dir.toPath().toAbsolutePath().normalize();
+            Path targetPath = directory.resolve(filename).normalize();
+            if (!directory.equals(targetPath.getParent()))
             {
-                throw new FederationClientException("Failed to download attachment: empty response body", statusCode);
+                throw new FederationClientException("Refusing to write attachment outside of " + directory + ": " + filename, statusCode);
             }
+
+            String finalFilePath = targetPath.toString();
+            ResponseBody body = response.body();
 
             try (InputStream inputStream = body.byteStream(); FileOutputStream outputStream = new FileOutputStream(finalFilePath);
                  ReadableByteChannel inChannel = Channels.newChannel(inputStream);
@@ -3832,8 +3840,7 @@ public final class FederationClient implements AutoCloseable
         try (Response response = httpClient.newCall(builder.build()).execute())
         {
             int statusCode = response.code();
-            ResponseBody responseBody = response.body();
-            String responseString = responseBody != null ? responseBody.string() : "";
+            String responseString = response.body().string();
 
             boolean isExpected = statusCode == 201;
             if (!isExpected)
@@ -3844,7 +3851,7 @@ public final class FederationClient implements AutoCloseable
                     JsonNode errorNode = Json.readTree(responseString);
                     if (errorNode.has("message"))
                     {
-                        errorMsg = "File upload failed: " + errorNode.get("message").asText() + " (response code: " + statusCode + ")";
+                        errorMsg = "File upload failed: " + errorNode.get("message").asString() + " (response code: " + statusCode + ")";
                     }
                 }
                 catch (Exception e)
@@ -3984,10 +3991,6 @@ public final class FederationClient implements AutoCloseable
                 }
 
                 ResponseBody downloadBody = downloadResponse.body();
-                if (downloadBody == null)
-                {
-                    throw new FederationClientException("Empty response body from URL: " + fileUrl, 0);
-                }
 
                 long contentLength = downloadBody.contentLength();
                 if (contentLength > maxFileSize)
@@ -4109,7 +4112,7 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
-     * Applies sort parameters to the request params, normalising case to match the server's
+     * Applies sort parameters to the request params, normalizing case to match the server's
      * expected format: {@code by} is lowercased and {@code order} is uppercased (e.g. "ASC"/"DESC").
      *
      * @param params The request parameters map to modify
