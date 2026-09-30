@@ -1,10 +1,8 @@
 package net.nosial.jfederation;
 
-import net.nosial.jfederation.enums.ClassificationFlag;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.OperatorCreated;
-import net.nosial.jfederation.records.OperatorRecord;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.ReportSubmission;
 import org.junit.jupiter.api.AfterEach;
@@ -17,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -29,6 +28,7 @@ public abstract class FederationClientTestBase {
     protected final List<String> createdReports = new ArrayList<>();
     protected final List<String> createdAttachments = new ArrayList<>();
     protected final List<Path> createdTempFiles = new ArrayList<>();
+    private final List<FederationClient> createdClients = new CopyOnWriteArrayList<>();
 
     protected static String serverEndpoint;
     protected static String serverAccessToken;
@@ -79,11 +79,23 @@ public abstract class FederationClientTestBase {
         createdReports.clear();
         createdAttachments.clear();
         createdTempFiles.clear();
+        for (FederationClient created : createdClients) {
+            created.close();
+        }
+        createdClients.clear();
         client.close();
     }
 
+    /**
+     * Registers a client so it is closed automatically after the current test.
+     */
+    protected FederationClient track(FederationClient federationClient) {
+        createdClients.add(federationClient);
+        return federationClient;
+    }
+
     protected FederationClient createAnonymousClient() {
-        return new FederationClient(serverEndpoint);
+        return track(new FederationClient(serverEndpoint));
     }
 
     protected FederationClient createLimitedOperator(String namePrefix, boolean management, boolean operator, boolean clientPerm) {
@@ -94,8 +106,7 @@ public abstract class FederationClientTestBase {
         if (management) { this.client.setManagementPermissions(uuid, true); }
         if (operator) { this.client.setOperatorPermissions(uuid, true); }
         if (clientPerm) { this.client.setClientPermissions(uuid, true); }
-        FederationClient opClient = new FederationClient(serverEndpoint, createdOperator.accessToken());
-        return opClient;
+        return track(new FederationClient(serverEndpoint, createdOperator.accessToken()));
     }
 
     protected FederationClient createLimitedOperator(String namePrefix) {
@@ -122,9 +133,6 @@ public abstract class FederationClientTestBase {
         return createSecurityEvidence(entityUuid, false, this.client);
     }
 
-    protected String createSecurityEvidence(String entityUuid, boolean confidential) {
-        return createSecurityEvidence(entityUuid, confidential, this.client);
-    }
 
     protected String createSecurityEvidence(String entityUuid, boolean confidential, FederationClient client) {
         String uuid = client.submitEvidence(entityUuid, "Security test evidence", "security note", "security", confidential);
@@ -168,8 +176,8 @@ public abstract class FederationClientTestBase {
         String entityUuid = createSecurityEntity(client);
         ReportSubmission submission = client.submitReport(entityUuid, "Security test report", IncidentType.SPAM);
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
-        return new SecurityReport(submission.getReport().uuid(), entityUuid, submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
+        return new SecurityReport(submission.getReport().uuid(), entityUuid, submission.getEvidence().getFirst().uuid());
     }
 
     protected Path createTempFile(String name, String content) {
@@ -196,9 +204,6 @@ public abstract class FederationClientTestBase {
         }
     }
 
-    protected void expectRequestFailure(Runnable callback, int allowedCode, String message) {
-        expectRequestFailure(callback, new int[]{allowedCode}, message);
-    }
 
     protected void expectRequestFailure(Runnable callback, int allowedCode) {
         expectRequestFailure(callback, new int[]{allowedCode}, "Expected FederationClientException");
@@ -231,14 +236,6 @@ public abstract class FederationClientTestBase {
         }
     }
 
-    /**
-     * Aborts the current test (reported as skipped) when the server's default
-     * configuration has attachment search disabled.
-     */
-    protected void assumeAttachmentSearchEnabled() {
-        Assumptions.assumeTrue(isAttachmentSearchEnabled(),
-            "Attachment search is disabled by the server's default configuration (FEDERATION_SEARCH_ENABLE_ATTACHMENTS=false)");
-    }
 
     protected void removeFromCleanup(List<String> list, String uuid) {
         list.remove(uuid);
