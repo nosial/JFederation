@@ -1,27 +1,30 @@
 package net.nosial.jfederation.classes;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Static utility providing access to a pre-configured Jackson {@link ObjectMapper} and common
  * read/write operations. The mapper is configured with snake-case property naming, non-null
- * serialisation, lenient unknown-property handling, and automatic module registration.
+ * serialization, lenient unknown-property handling, and automatic module registration.
  */
 public final class Json
 {
     private static final Logger log = LoggerFactory.getLogger(Json.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-            .setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL)
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .changeDefaultPropertyInclusion(incl -> incl.withValueInclusion(JsonInclude.Include.NON_NULL))
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            .findAndRegisterModules();
+            .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, false)
+            .findAndAddModules()
+            .build();
 
     private Json()
     {
@@ -38,11 +41,11 @@ public final class Json
     }
 
     /**
-     * Serialises an object to a JSON string.
+     * Serializes an object to a JSON string.
      *
-     * @param value The object to serialise
+     * @param value The object to serialize
      * @return The JSON string representation
-     * @throws RuntimeException if serialisation fails
+     * @throws RuntimeException if serialization fails
      */
     public static String writeValueAsString(Object value)
     {
@@ -50,7 +53,7 @@ public final class Json
         {
             return MAPPER.writeValueAsString(value);
         }
-        catch (JsonProcessingException e)
+        catch (JacksonException e)
         {
             log.error("Failed to serialize object of type {} to JSON", value.getClass().getName(), e);
             throw new RuntimeException("Failed to serialize to JSON", e);
@@ -63,8 +66,8 @@ public final class Json
      * @param content The JSON string
      * @param valueType The target class
      * @param <T> The target type
-     * @return The deserialised object
-     * @throws RuntimeException if deserialisation fails
+     * @return The deserialized object
+     * @throws RuntimeException if deserialization fails
      */
     public static <T> T readValue(String content, Class<T> valueType)
     {
@@ -72,7 +75,7 @@ public final class Json
         {
             return MAPPER.readValue(content, valueType);
         }
-        catch (JsonProcessingException e)
+        catch (JacksonException e)
         {
             log.error("Failed to deserialize JSON to type {}", valueType.getName(), e);
             throw new RuntimeException("Failed to deserialize from JSON", e);
@@ -92,7 +95,7 @@ public final class Json
         {
             return MAPPER.readTree(content);
         }
-        catch (JsonProcessingException e)
+        catch (JacksonException e)
         {
             log.error("Failed to parse JSON", e);
             throw new RuntimeException("Failed to parse JSON", e);
