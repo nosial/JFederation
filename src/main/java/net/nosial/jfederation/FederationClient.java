@@ -2224,10 +2224,10 @@ public final class FederationClient implements AutoCloseable
      * Sets a relationship between two entities.
      *
      * @param entityIdentifier The source entity UUID, hostname, or hash
-     * @param targetEntityUuid The UUID, SHA-256 hash, or entity address of the target entity
+     * @param relatedEntityIdentifier The UUID, SHA-256 hash, or entity address of the related entity
      * @param relationshipType The type of relationship to establish
      */
-    public void setEntityRelationship(String entityIdentifier, String targetEntityUuid,
+    public void setEntityRelationship(String entityIdentifier, String relatedEntityIdentifier,
                                         EntityRelationshipType relationshipType)
     {
         if (entityIdentifier == null || entityIdentifier.isEmpty())
@@ -2235,13 +2235,13 @@ public final class FederationClient implements AutoCloseable
             throw new IllegalArgumentException("Entity identifier cannot be empty");
         }
 
-        if (targetEntityUuid == null || targetEntityUuid.isEmpty())
+        if (relatedEntityIdentifier == null || relatedEntityIdentifier.isEmpty())
         {
-            throw new IllegalArgumentException("Target entity UUID cannot be empty");
+            throw new IllegalArgumentException("Related entity identifier cannot be empty");
         }
 
         Map<String, Object> params = new LinkedHashMap<>();
-        params.put("target_identifier", targetEntityUuid);
+        params.put("target_identifier", relatedEntityIdentifier);
         params.put("relationship_type", relationshipType.getValue());
 
         makeRequest("PATCH", "entities/" + entityIdentifier + "/relationship", params, 200,
