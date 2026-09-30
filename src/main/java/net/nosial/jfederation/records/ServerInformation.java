@@ -25,6 +25,8 @@ import java.util.List;
  * @param publicSearch whether the global search endpoint is available without authentication
  * @param searchTypes record types with enabled dedicated search endpoints
  * @param publicSearchTypes record types with dedicated search endpoints available without authentication
+ * @param allowIllegalContent whether the server accepts reports with the {@code ILLEGAL_CONTENT} incident type, or
+ *                            {@code null} when the server does not publish it; see {@link #isIllegalContentAllowed()}
  * @param auditLogRecords total audit log record count
  * @param blacklistRecords total blacklist record count
  * @param knownEntities total known entity count
@@ -48,6 +50,7 @@ public record ServerInformation(
     @JsonProperty("public_search") boolean publicSearch,
     @JsonProperty("search_types") List<RecordType> searchTypes,
     @JsonProperty("public_search_types") List<RecordType> publicSearchTypes,
+    @JsonProperty("allow_illegal_content") Boolean allowIllegalContent,
     @JsonProperty("public_audit_logs_visibility") List<AuditLogType> publicAuditLogsVisibility,
     @JsonProperty("audit_log_records") int auditLogRecords,
     @JsonProperty("blacklist_records") int blacklistRecords,
@@ -57,4 +60,15 @@ public record ServerInformation(
     @JsonProperty("operators") int operators,
     @JsonProperty("reports") int reports
 ) {
+    /**
+     * Returns whether the server accepts reports with the {@code ILLEGAL_CONTENT} incident type. A server that
+     * declines them rejects such reports with HTTP 403. Servers that predate the {@code allow_illegal_content}
+     * member do not publish it and accept every incident type.
+     *
+     * @return true unless the server publishes {@code allow_illegal_content} as false
+     */
+    public boolean isIllegalContentAllowed()
+    {
+        return !Boolean.FALSE.equals(allowIllegalContent);
+    }
 }

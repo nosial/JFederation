@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Immutable record representing an operator (user) in the Federation server.
  *
  * @param uuid the unique operator identifier
- * @param accessToken the operator's access token for API authentication
  * @param name the display name of the operator
  * @param disabled whether the operator account is disabled
  * @param clientPermissions whether the operator has client-level permissions
@@ -18,7 +17,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public record OperatorRecord(
     @JsonProperty("uuid") String uuid,
-    @JsonProperty("access_token") String accessToken,
     @JsonProperty("name") String name,
     @JsonProperty("disabled") boolean disabled,
     @JsonProperty("client_permissions") boolean clientPermissions,
