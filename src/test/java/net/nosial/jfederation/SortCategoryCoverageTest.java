@@ -3,16 +3,13 @@ package net.nosial.jfederation;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.records.AuditLog;
 import net.nosial.jfederation.records.BlacklistRecord;
-import net.nosial.jfederation.records.EntityRecord;
 import net.nosial.jfederation.records.EvidenceRecord;
-import net.nosial.jfederation.records.FileAttachmentRecord;
 import net.nosial.jfederation.records.OperatorRecord;
 import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.jfederation.records.ReportSubmission;
 import org.junit.jupiter.api.Test;
 import net.nosial.jfederation.records.OperatorCreated;
 
-import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -130,7 +127,7 @@ class SortCategoryCoverageTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Operator reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
         String selfUuid = client.getSelf().uuid();
 
         List<ReportRecord> opened = client.listOperatorReports(selfUuid, 1, 50, "OPENED", "created", "DESC");
@@ -146,7 +143,7 @@ class SortCategoryCoverageTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Assigned reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
         String selfUuid = client.getSelf().uuid();
         client.assignOperatorToReport(reportUuid, selfUuid);
 
@@ -184,7 +181,7 @@ class SortCategoryCoverageTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Entity reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         List<ReportRecord> opened = client.listEntityReports(entityUuid, 1, 50, "OPENED", "created", "DESC");
         assertTrue(opened.stream().anyMatch(r -> reportUuid.equals(r.uuid())));
@@ -216,7 +213,7 @@ class SortCategoryCoverageTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Search reports content", IncidentType.SPAM, uniqueMessage);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         List<ReportRecord> opened = client.searchReports(uniqueMessage, 1, 50, "OPENED", "created", "DESC");
         assertTrue(opened.stream().anyMatch(r -> reportUuid.equals(r.uuid())));

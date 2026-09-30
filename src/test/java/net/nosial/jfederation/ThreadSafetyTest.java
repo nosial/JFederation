@@ -196,7 +196,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
         String blacklistUuid = client.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, expires);
         createdBlacklistRecords.add(blacklistUuid);
 
-        FederationClient altClient = new FederationClient(serverEndpoint, serverAccessToken);
+        FederationClient altClient = track(new FederationClient(serverEndpoint, serverAccessToken));
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch latch = new CountDownLatch(1);
         AtomicInteger deleteSuccess = new AtomicInteger(0);
@@ -327,7 +327,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
     }
 
     @Test
-    void testHighVolumeBulkOperations() throws Exception {
+    void testHighVolumeBulkOperations() {
         ConcurrentLinkedQueue<String> entityUuids = new ConcurrentLinkedQueue<>();
 
         for (int i = 0; i < BULK_COUNT; i++) {
@@ -355,7 +355,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
     }
 
     @Test
-    void testBulkCrossRecordLifecycle() throws Exception {
+    void testBulkCrossRecordLifecycle() {
         ConcurrentLinkedQueue<String> entityUuids = new ConcurrentLinkedQueue<>();
         ConcurrentLinkedQueue<String> evidenceUuids = new ConcurrentLinkedQueue<>();
         ConcurrentLinkedQueue<String> blacklistUuids = new ConcurrentLinkedQueue<>();
@@ -401,7 +401,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
     }
 
     @Test
-    void testMassSearchUnderLoad() throws Exception {
+    void testMassSearchUnderLoad() {
         String sharedKeyword = "masssearch-" + randomUuid().substring(0, 6);
         ConcurrentLinkedQueue<String> entityUuids = new ConcurrentLinkedQueue<>();
 
@@ -415,7 +415,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
 
         for (int i = 0; i < 10; i++) {
             String evidenceUuid = client.submitEvidence(
-                entityUuids.stream().findFirst().get(),
+                entityUuids.element(),
                 "Evidence for " + sharedKeyword + " " + i,
                 "mass search test", "masssearch");
             createdEvidenceRecords.add(evidenceUuid);
@@ -446,7 +446,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
     }
 
     @Test
-    void testFullLifecycleWorkflow() throws Exception {
+    void testFullLifecycleWorkflow() {
         String entityHost = "full-lifecycle-" + randomUuid().substring(0, 6) + ".com";
         String entityUuid = client.pushEntity(entityHost, "lifecycle_user");
         createdEntities.add(entityUuid);
@@ -487,7 +487,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(reportEntityUuid, "Lifecycle report", IncidentType.SCAM);
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         ReportRecord report = client.getReport(submission.getReport().uuid());
         assertNotNull(report);
@@ -497,7 +497,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
     }
 
     @Test
-    void testCrossClientPermissionIsolation() throws Exception {
+    void testCrossClientPermissionIsolation() {
         FederationClient noPermClient = createLimitedOperator("no_perm");
         FederationClient clientPermOnly = createLimitedOperator("client_only", true);
         FederationClient fullManager = createLimitedOperator("full_mgr", true, true, true);
@@ -508,7 +508,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
         createdOperators.add(targetOpUuid);
 
         expectRequestFailure(
-            () -> { noPermClient.createOperator("should_fail"); },
+            () -> noPermClient.createOperator("should_fail"),
             new int[]{403, 401});
 
         expectRequestFailure(
@@ -643,16 +643,13 @@ class ThreadSafetyTest extends FederationClientTestBase {
             executor.submit(() -> {
                 try {
                     latch.await();
-                    FederationClient anonClient = createAnonymousClient();
-                    try {
+                    try (FederationClient anonClient = createAnonymousClient()) {
                         anonClient.getEvidenceRecord(evidenceUuid);
                         allowedCount.incrementAndGet();
                     } catch (FederationClientException e) {
                         if (e.getStatusCode() == 403 || e.getStatusCode() == 401) {
                             deniedCount.incrementAndGet();
                         }
-                    } finally {
-                        anonClient.close();
                     }
                 } catch (Exception e) {
                     fail("Anonymous client test failed: " + e.getMessage());
@@ -726,11 +723,7 @@ class ThreadSafetyTest extends FederationClientTestBase {
     void testConcurrentOperatorCreationUnderLoad() throws Exception {
         ExecutorService executor = Executors.newFixedThreadPool(10);
 
-        class OpResult {
-            final String uuid;
-            final String name;
-            OpResult(String uuid, String name) { this.uuid = uuid; this.name = name; }
-        }
+        record OpResult(String uuid, String name) {}
 
         ConcurrentLinkedQueue<OpResult> operatorResults = new ConcurrentLinkedQueue<>();
         AtomicInteger successCount = new AtomicInteger(0);
@@ -755,14 +748,14 @@ class ThreadSafetyTest extends FederationClientTestBase {
         assertEquals(10, successCount.get());
 
         for (OpResult result : operatorResults) {
-            createdOperators.add(result.uuid);
-            OperatorRecord op = client.getOperator(result.uuid);
+            createdOperators.add(result.uuid());
+            OperatorRecord op = client.getOperator(result.uuid());
             assertNotNull(op);
         }
     }
 
     @Test
-    void testSequentialBulkLifecycleAllTypes() throws Exception {
+    void testSequentialBulkLifecycleAllTypes() {
         Set<String> entitySet = new HashSet<>();
         Set<String> evidenceSet = new HashSet<>();
         Set<String> blacklistSet = new HashSet<>();

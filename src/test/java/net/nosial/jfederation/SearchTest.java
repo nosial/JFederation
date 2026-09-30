@@ -81,7 +81,7 @@ class SearchTest extends FederationClientTestBase {
         assertNotNull(results);
         assertFalse(results.isEmpty());
 
-        List<String> texts = results.stream().map(EvidenceRecord::textContent).collect(Collectors.toList());
+        List<String> texts = results.stream().map(EvidenceRecord::textContent).toList();
         assertTrue(texts.contains(uniqueContent));
     }
 
@@ -147,7 +147,7 @@ class SearchTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(entityUuid, "report content 2", IncidentType.SPAM, "search by entity");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         List<ReportRecord> results = client.searchReports(entityUuid, 1, 10);
         assertNotNull(results);
@@ -444,7 +444,7 @@ class SearchTest extends FederationClientTestBase {
         List<EntityRecord> page1 = client.searchEntities(host, 1, 3);
         List<EntityRecord> page2 = client.searchEntities(host, 2, 3);
 
-        List<String> page1Uuids = page1.stream().map(EntityRecord::uuid).collect(Collectors.toList());
+        List<String> page1Uuids = page1.stream().map(EntityRecord::uuid).toList();
         List<String> page2Uuids = page2.stream().map(EntityRecord::uuid).collect(Collectors.toList());
 
         List<String> intersection = new ArrayList<>(page1Uuids);
@@ -556,7 +556,7 @@ class SearchTest extends FederationClientTestBase {
         List<SearchResult> results = client.search("search-result-obj");
         assertNotNull(results);
         assertFalse(results.isEmpty());
-        SearchResult result = results.get(0);
+        SearchResult result = results.getFirst();
         assertEquals(RecordType.ENTITY, result.type());
         EntityRecord record = result.getRecord();
         assertEquals(entityUuid, record.uuid());
@@ -575,7 +575,7 @@ class SearchTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, keyword + " report content",
             IncidentType.SPAM, keyword + " message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         int expires = (int) (System.currentTimeMillis() / 1000 + 3600);
         String blacklistUuid = client.blacklistEntity(entityUuid, submission.getReport().uuid(), IncidentType.SPAM, expires);
@@ -727,7 +727,7 @@ class SearchTest extends FederationClientTestBase {
         List<EntityRecord> results = client.searchEntities(host, 1, 100);
         assertTrue(results.size() >= count);
 
-        List<String> resultUuids = results.stream().map(EntityRecord::uuid).collect(Collectors.toList());
+        List<String> resultUuids = results.stream().map(EntityRecord::uuid).toList();
         for (String uuid : created) {
             assertTrue(resultUuids.contains(uuid), "Entity " + uuid + " should be in search results");
         }
@@ -749,7 +749,7 @@ class SearchTest extends FederationClientTestBase {
         List<EvidenceRecord> results = client.searchEvidence(tag, 1, 100);
         assertTrue(results.size() >= created.size());
 
-        List<String> resultUuids = results.stream().map(EvidenceRecord::uuid).collect(Collectors.toList());
+        List<String> resultUuids = results.stream().map(EvidenceRecord::uuid).toList();
         for (String uuid : created) {
             assertTrue(resultUuids.contains(uuid));
         }
@@ -764,9 +764,9 @@ class SearchTest extends FederationClientTestBase {
         assertFalse(results.isEmpty());
 
         EntityRecord fullRecord = client.getEntityRecord(entityUuid);
-        assertEquals(fullRecord.uuid(), results.get(0).uuid());
-        assertEquals(fullRecord.host(), results.get(0).host());
-        assertEquals(fullRecord.id(), results.get(0).id());
+        assertEquals(fullRecord.uuid(), results.getFirst().uuid());
+        assertEquals(fullRecord.host(), results.getFirst().host());
+        assertEquals(fullRecord.id(), results.getFirst().id());
     }
 
     @Test
@@ -781,8 +781,8 @@ class SearchTest extends FederationClientTestBase {
         assertFalse(results.isEmpty());
 
         EvidenceRecord fullRecord = client.getEvidenceRecord(evidenceUuid);
-        assertEquals(fullRecord.uuid(), results.get(0).uuid());
-        assertEquals(fullRecord.textContent(), results.get(0).textContent());
+        assertEquals(fullRecord.uuid(), results.getFirst().uuid());
+        assertEquals(fullRecord.textContent(), results.getFirst().textContent());
     }
 
     @Test
@@ -925,6 +925,7 @@ class SearchTest extends FederationClientTestBase {
         for (EvidenceRecord result : results) {
             if (result.uuid().equals(evidenceUuid)) {
                 found = true;
+                break;
             }
         }
         assertTrue(found, "Evidence must be found by exact word within text_content");
@@ -944,6 +945,7 @@ class SearchTest extends FederationClientTestBase {
         for (EvidenceRecord result : results) {
             if (result.uuid().equals(evidenceUuid)) {
                 found = true;
+                break;
             }
         }
         assertTrue(found, "Evidence must be found by numeric content search");
@@ -969,9 +971,7 @@ class SearchTest extends FederationClientTestBase {
 
         StringBuilder sb = new StringBuilder();
         sb.append("TEXT_CONTENT_").append(randomUuid()).append(" ");
-        for (int i = 0; i < 200; i++) {
-            sb.append("Lorem ipsum dolor sit amet consectetur adipiscing elit ");
-        }
+        sb.append("Lorem ipsum dolor sit amet consectetur adipiscing elit ".repeat(200));
         String longContent = sb.toString();
         String evidenceUuid = client.submitEvidence(entityUuid, longContent, "long note", "long_tag");
         createdEvidenceRecords.add(evidenceUuid);
@@ -982,6 +982,7 @@ class SearchTest extends FederationClientTestBase {
         for (EvidenceRecord result : results) {
             if (result.uuid().equals(evidenceUuid)) {
                 found = true;
+                break;
             }
         }
         assertTrue(found, "Evidence with very long text_content must be found");
@@ -1017,6 +1018,7 @@ class SearchTest extends FederationClientTestBase {
         for (EvidenceRecord result : results) {
             if (result.uuid().equals(evidenceUuid)) {
                 found = true;
+                break;
             }
         }
         assertTrue(found, "Evidence must be found by its exact two-character content");
@@ -1048,6 +1050,7 @@ class SearchTest extends FederationClientTestBase {
         for (EvidenceRecord result : results) {
             if (result.uuid().equals(evidenceUuid)) {
                 found = true;
+                break;
             }
         }
         assertTrue(found, "Evidence must be found when query matches text_content at the start");
@@ -1067,6 +1070,7 @@ class SearchTest extends FederationClientTestBase {
         for (EvidenceRecord result : results) {
             if (result.uuid().equals(evidenceUuid)) {
                 found = true;
+                break;
             }
         }
         assertTrue(found, "Evidence must be found when query matches text_content at the end");
@@ -1087,7 +1091,7 @@ class SearchTest extends FederationClientTestBase {
         List<EvidenceRecord> results = client.searchEvidence("SHARED_TEXT_SUBSTRING", 1, 100);
         assertTrue(results.size() >= created.size());
 
-        List<String> resultUuids = results.stream().map(EvidenceRecord::uuid).collect(Collectors.toList());
+        List<String> resultUuids = results.stream().map(EvidenceRecord::uuid).toList();
         for (String uuid : created) {
             assertTrue(resultUuids.contains(uuid));
         }
@@ -1107,6 +1111,7 @@ class SearchTest extends FederationClientTestBase {
         for (EvidenceRecord result : results) {
             if (result.uuid().equals(evidenceUuid)) {
                 found = true;
+                break;
             }
         }
         assertFalse(found, "Note text should NOT be searchable via evidence text_content search");

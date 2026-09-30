@@ -13,7 +13,6 @@ import net.nosial.jfederation.records.ScannedContent;
 import net.nosial.jfederation.records.SearchResult;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -35,7 +34,7 @@ class DefaultOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Report to close without classification", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
         client.assignOperatorToReport(reportUuid, client.getSelf().uuid());
 
 
@@ -122,13 +121,13 @@ class DefaultOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Report with only a message", IncidentType.SPAM, "Custom message");
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         assertEquals("Custom message", client.getReport(reportUuid).message());
     }
 
     @Test
-    void testSubmitReportWithMessageTagAndLocalAttachments() throws IOException {
+    void testSubmitReportWithMessageTagAndLocalAttachments() {
         String entityUuid = client.pushEntity("report-paths-" + randomUuid().substring(0, 8) + ".com", "report_paths");
         createdEntities.add(entityUuid);
 
@@ -138,7 +137,7 @@ class DefaultOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, new ContentInput("Report with local paths", null, "overload_tag"), IncidentType.SPAM,
             "With paths");
         String reportUuid = submission.getReport().uuid();
-        String evidenceUuid = submission.getEvidence().get(0).uuid();
+        String evidenceUuid = submission.getEvidence().getFirst().uuid();
         createdReports.add(reportUuid);
         createdEvidenceRecords.add(evidenceUuid);
 

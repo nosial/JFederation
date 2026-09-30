@@ -25,7 +25,7 @@ class FeaturesTest extends FederationClientTestBase {
         assertNotNull(originalAccessToken);
         assertFalse(originalAccessToken.isEmpty());
 
-        FederationClient testClient = new FederationClient(serverEndpoint, originalAccessToken);
+        FederationClient testClient = track(new FederationClient(serverEndpoint, originalAccessToken));
         OperatorRecord selfOperator = testClient.getSelf();
         assertEquals(operatorUuid, selfOperator.uuid());
 
@@ -33,7 +33,7 @@ class FeaturesTest extends FederationClientTestBase {
         assertNotNull(newAccessToken);
         assertNotEquals(originalAccessToken, newAccessToken);
 
-        FederationClient newTestClient = new FederationClient(serverEndpoint, newAccessToken);
+        FederationClient newTestClient = track(new FederationClient(serverEndpoint, newAccessToken));
         OperatorRecord newSelfOperator = newTestClient.getSelf();
         assertEquals(operatorUuid, newSelfOperator.uuid());
 
@@ -45,7 +45,7 @@ class FeaturesTest extends FederationClientTestBase {
                 "Expected 401/403 for revoked Access Token, got " + e.getStatusCode());
         }
 
-        OperatorRecord updatedOperator = client.getOperator(operatorUuid);
+        assertEquals(operatorUuid, client.getOperator(operatorUuid).uuid());
 
         testClient.close();
         newTestClient.close();
@@ -177,7 +177,7 @@ class FeaturesTest extends FederationClientTestBase {
         client.setClientPermissions(operatorUuid, true);
         client.setManagementPermissions(operatorUuid, true);
 
-        FederationClient concurrentClient = new FederationClient(serverEndpoint, operatorUuidCreated.accessToken());
+        FederationClient concurrentClient = track(new FederationClient(serverEndpoint, operatorUuidCreated.accessToken()));
 
         String entityUuid = client.pushEntity("concurrent-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "concurrent_user");
         createdEntities.add(entityUuid);

@@ -76,13 +76,14 @@ class ClientTest extends FederationClientTestBase {
     @Test
     void testSecurityCorsDoesNotAllowWildcardOrigin() throws Exception {
         String url = FederationClientTestBase.serverEndpoint.replaceAll("/+$", "") + "/info";
-        HttpClient hc = HttpClient.newHttpClient();
         HttpRequest req = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .header("Origin", "https://example.evil")
             .build();
-        HttpResponse<String> resp = hc.send(req, HttpResponse.BodyHandlers.ofString());
-        String headers = resp.headers().firstValue("access-control-allow-origin").orElse("");
-        assertNotEquals("*", headers, "Server should not return a wildcard CORS header for arbitrary origins");
+        try (HttpClient hc = HttpClient.newHttpClient()) {
+            HttpResponse<String> resp = hc.send(req, HttpResponse.BodyHandlers.ofString());
+            String headers = resp.headers().firstValue("access-control-allow-origin").orElse("");
+            assertNotEquals("*", headers, "Server should not return a wildcard CORS header for arbitrary origins");
+        }
     }
 }

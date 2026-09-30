@@ -1,7 +1,6 @@
 package net.nosial.jfederation;
 
 import net.nosial.jfederation.enums.IncidentType;
-import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.*;
 import org.junit.jupiter.api.Test;
 import net.nosial.jfederation.records.OperatorCreated;
@@ -312,7 +311,7 @@ class PaginationTest extends FederationClientTestBase {
         List<EntityRecord> page1 = client.listEntities(1, 5);
         List<EntityRecord> page2 = client.listEntities(2, 5);
 
-        List<String> page1Uuids = page1.stream().map(EntityRecord::uuid).collect(Collectors.toList());
+        List<String> page1Uuids = page1.stream().map(EntityRecord::uuid).toList();
         List<String> page2Uuids = page2.stream().map(EntityRecord::uuid).collect(Collectors.toList());
 
         List<String> intersection = new ArrayList<>(page1Uuids);

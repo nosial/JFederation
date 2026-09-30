@@ -5,14 +5,12 @@ import net.nosial.jfederation.records.AuditLog;
 import net.nosial.jfederation.records.BlacklistRecord;
 import net.nosial.jfederation.records.EntityRecord;
 import net.nosial.jfederation.records.EvidenceRecord;
-import net.nosial.jfederation.records.FileAttachmentRecord;
 import net.nosial.jfederation.records.OperatorRecord;
 import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.jfederation.records.ReportSubmission;
 import org.junit.jupiter.api.Test;
 import net.nosial.jfederation.records.OperatorCreated;
 
-import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -135,7 +133,7 @@ class SortByOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "By overload operator reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
         String selfUuid = client.getSelf().uuid();
 
         List<ReportRecord> opened = client.listOperatorReports(selfUuid, 1, 50, "OPENED", "created");
@@ -148,7 +146,7 @@ class SortByOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "By overload assigned reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
         String selfUuid = client.getSelf().uuid();
         client.assignOperatorToReport(reportUuid, selfUuid);
 
@@ -200,7 +198,7 @@ class SortByOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "By overload entity reports content", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         List<ReportRecord> all = client.listEntityReports(entityUuid);
         assertTrue(all.stream().anyMatch(r -> reportUuid.equals(r.uuid())));
@@ -248,7 +246,7 @@ class SortByOverloadsTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "By overload search reports content", IncidentType.SPAM, uniqueMessage);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         List<ReportRecord> opened = client.searchReports(uniqueMessage, 1, 50, "OPENED", "created");
         assertTrue(opened.stream().anyMatch(r -> reportUuid.equals(r.uuid())));

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import net.nosial.jfederation.records.OperatorCreated;
 
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -46,8 +45,8 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
         createdOperators.add(operatorUuid);
         List<AuditLog> operatorEvents = client.listAuditLogs(1, 10, "OPERATOR_EVENTS");
         assertFalse(operatorEvents.isEmpty(), "Newest operator event should appear on page 1 with OPERATOR_EVENTS filter");
-        assertTrue(operatorEvents.get(0).type().getValue().equals("OPERATOR_CREATED")
-                && operatorEvents.get(0).message().contains(operatorName),
+        assertTrue(operatorEvents.getFirst().type().getValue().equals("OPERATOR_CREATED")
+                && operatorEvents.getFirst().message().contains(operatorName),
             "Newest operator event should be the creation of the new operator");
         assertTrue(client.listOperators(1, 100, "ENABLED").stream()
             .anyMatch(op -> op.uuid().equals(operatorUuid)));
@@ -74,7 +73,7 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(entityUuid, "cat overload report", IncidentType.SPAM, "cat overload message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
         assertTrue(client.listReports(1, 100, "OPENED").stream()
             .anyMatch(r -> r.uuid().equals(submission.getReport().uuid())));
         assertTrue(client.listReports(1, 100, "OPENED", "created").stream()
@@ -100,7 +99,7 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(entityUuid, "entity sublist report", IncidentType.SPAM, "entity sublist message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         assertTrue(client.listEntityBlacklistRecords(entityUuid, 1, 100).stream()
             .anyMatch(b -> b.uuid().equals(blacklistUuid)));
@@ -129,7 +128,7 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(entityUuid, "operator sublist report", IncidentType.SPAM, "operator sublist message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
         client.assignOperatorToReport(submission.getReport().uuid(), selfUuid);
 
         assertTrue(client.listOperatorEvidence(selfUuid).stream()
@@ -151,8 +150,8 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
         OperatorCreated tokenOperatorCreated = client.createOperator("token-sublist-" + randomUuid().substring(0, 6));
         String tokenOperatorUuid = tokenOperatorCreated.uuid();
         createdOperators.add(tokenOperatorUuid);
-        FederationClient tokenOperatorClient = new FederationClient(serverEndpoint,
-            tokenOperatorCreated.accessToken());
+        FederationClient tokenOperatorClient = track(new FederationClient(serverEndpoint,
+            tokenOperatorCreated.accessToken()));
         tokenOperatorClient.generateAccessToken(true);
         assertTrue(client.listOperatorAuditLogs(tokenOperatorUuid, 1, 100, "OPERATOR_EVENTS").stream()
             .anyMatch(log -> tokenOperatorUuid.equals(log.operatorUuid())
@@ -179,7 +178,7 @@ class ParameterPrefixOverloadsTest extends FederationClientTestBase {
 
         ReportSubmission submission = client.submitReport(entityUuid, keyword + " report", IncidentType.SPAM, keyword + " message");
         createdReports.add(submission.getReport().uuid());
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         OperatorCreated operatorUuidCreated = client.createOperator(keyword + "_operator");
         String operatorUuid = operatorUuidCreated.uuid();

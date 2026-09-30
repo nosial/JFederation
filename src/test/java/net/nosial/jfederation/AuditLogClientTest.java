@@ -20,7 +20,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setClientPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient operatorClient = new FederationClient(serverEndpoint, token);
+        FederationClient operatorClient = track(new FederationClient(serverEndpoint, token));
 
         String entityUuid = operatorClient.pushEntity("sample-audit.com", "sample_user");
         createdEntities.add(entityUuid);
@@ -71,7 +71,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setClientPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient operatorClient = new FederationClient(serverEndpoint, token);
+        FederationClient operatorClient = track(new FederationClient(serverEndpoint, token));
 
         String entityUuid = operatorClient.pushEntity("operator-audit-test.com", "audit_user");
         createdEntities.add(entityUuid);
@@ -94,7 +94,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setManagementPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient operatorClient = new FederationClient(serverEndpoint, token);
+        FederationClient operatorClient = track(new FederationClient(serverEndpoint, token));
 
         for (int i = 1; i <= 3; i++) {
             String entityUuid = operatorClient.pushEntity("paginated-audit-" + i + ".com", "user_" + i);
@@ -174,7 +174,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setClientPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient limitedClient = new FederationClient(serverEndpoint, token);
+        FederationClient limitedClient = track(new FederationClient(serverEndpoint, token));
 
         List<AuditLog> logs = limitedClient.listOperatorAuditLogs(operatorUuid, 1, 10);
         assertNotNull(logs);
@@ -188,7 +188,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setClientPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient operatorClient = new FederationClient(serverEndpoint, token);
+        FederationClient operatorClient = track(new FederationClient(serverEndpoint, token));
 
         int initialLogCount = client.listOperatorAuditLogs(operatorUuid, 1, 100).size();
 
@@ -220,7 +220,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setManagementPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient operatorClient = new FederationClient(serverEndpoint, token);
+        FederationClient operatorClient = track(new FederationClient(serverEndpoint, token));
 
         String entityUuid = operatorClient.pushEntity("blacklist-audit-test.com", "blacklist_audit_user");
         createdEntities.add(entityUuid);
@@ -314,7 +314,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setClientPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient operatorClient = new FederationClient(serverEndpoint, token);
+        FederationClient operatorClient = track(new FederationClient(serverEndpoint, token));
 
         int beforeCount = client.listOperatorAuditLogs(operatorUuid, 1, 100).size();
 
@@ -343,7 +343,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setManagementPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient operatorClient = new FederationClient(serverEndpoint, token);
+        FederationClient operatorClient = track(new FederationClient(serverEndpoint, token));
 
         String entityUuid = operatorClient.pushEntity("actor-evidence.com", "actor_evidence_user");
         createdEntities.add(entityUuid);
@@ -381,7 +381,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setClientPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient operatorClient = new FederationClient(serverEndpoint, token);
+        FederationClient operatorClient = track(new FederationClient(serverEndpoint, token));
 
         String entityUuid = operatorClient.pushEntity("type-filter.com", "type_filter_user");
         createdEntities.add(entityUuid);
@@ -400,7 +400,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         client.setClientPermissions(operatorUuid, true);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient operatorClient = new FederationClient(serverEndpoint, token);
+        FederationClient operatorClient = track(new FederationClient(serverEndpoint, token));
 
         String entityUuid = operatorClient.pushEntity("uuid-audit.com", "uuid_audit_user");
         createdEntities.add(entityUuid);
@@ -408,7 +408,7 @@ class AuditLogClientTest extends FederationClientTestBase {
         List<AuditLog> logs = client.listOperatorAuditLogs(operatorUuid, 1, 100);
         assertFalse(logs.isEmpty());
 
-        AuditLog firstLog = logs.get(0);
+        AuditLog firstLog = logs.getFirst();
         AuditLog retrieved = client.getAuditLogRecord(firstLog.uuid());
         assertEquals(firstLog.uuid(), retrieved.uuid());
         assertEquals(firstLog.message(), retrieved.message());
@@ -437,10 +437,8 @@ class AuditLogClientTest extends FederationClientTestBase {
 
     @Test
     void testSecurityOperatorAuditLogsAreIsolated() {
-        FederationClient manager = createLimitedOperator("audit_manager", false, true, true);
         FederationClient snooper = createLimitedOperator("audit_snooper", false, false, true);
 
-        String snooperUuid = snooper.getSelf().uuid();
         OperatorCreated targetUuidCreated = client.createOperator("audit_target");
         String targetUuid = targetUuidCreated.uuid();
         createdOperators.add(targetUuid);

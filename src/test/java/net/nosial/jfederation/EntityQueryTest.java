@@ -1,6 +1,5 @@
 package net.nosial.jfederation;
 
-import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.EntityRecord;
 import org.junit.jupiter.api.Test;
 
@@ -246,7 +245,6 @@ class EntityQueryTest extends FederationClientTestBase {
 
     @Test
     void testQueryEntityAsAnonymousClient() {
-        ServerInformationTest serverInfoTest = new ServerInformationTest();
         if (!client.getServerInformation().publicEntities()) {
             return;
         }

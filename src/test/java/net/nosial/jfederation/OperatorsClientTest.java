@@ -137,7 +137,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         OperatorRecord rec = client.getOperator(uuid);
         assertTrue(rec.disabled());
 
-        FederationClient opClient = new FederationClient(serverEndpoint, uuidCreated.accessToken());
+        FederationClient opClient = track(new FederationClient(serverEndpoint, uuidCreated.accessToken()));
         try {
             opClient.getSelf();
             fail("Expected FederationClientException for disabled operator");
@@ -156,7 +156,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         client.disableOperator(uuid);
         assertTrue(client.getOperator(uuid).disabled());
 
-        FederationClient opClient = new FederationClient(serverEndpoint, uuidCreated.accessToken());
+        FederationClient opClient = track(new FederationClient(serverEndpoint, uuidCreated.accessToken()));
         try {
             opClient.getSelf();
             fail("Expected exception for disabled operator");
@@ -224,7 +224,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         String newToken = client.generateOperatorAccessToken(uuid);
         assertNotEquals(origToken, newToken);
 
-        FederationClient newTokenClient = new FederationClient(serverEndpoint, newToken);
+        FederationClient newTokenClient = track(new FederationClient(serverEndpoint, newToken));
         assertEquals(uuid, newTokenClient.getSelf().uuid());
         newTokenClient.close();
 
@@ -245,7 +245,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         createdOperators.add(uuid);
         client.setClientPermissions(uuid, true);
 
-        FederationClient opClient = new FederationClient(serverEndpoint, uuidCreated.accessToken());
+        FederationClient opClient = track(new FederationClient(serverEndpoint, uuidCreated.accessToken()));
 
         String entityUuid = opClient.pushEntity("example.com", "client_auth_user_" + randomUuid().substring(0, 8));
         assertNotNull(entityUuid);
@@ -259,7 +259,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         String uuid = uuidCreated.uuid();
         createdOperators.add(uuid);
 
-        FederationClient opClient = new FederationClient(serverEndpoint, uuidCreated.accessToken());
+        FederationClient opClient = track(new FederationClient(serverEndpoint, uuidCreated.accessToken()));
 
         try {
             opClient.pushEntity("example.com", "unauth_user");
@@ -277,7 +277,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         createdOperators.add(uuid);
         client.setOperatorPermissions(uuid, true);
 
-        FederationClient opClient = new FederationClient(serverEndpoint, uuidCreated.accessToken());
+        FederationClient opClient = track(new FederationClient(serverEndpoint, uuidCreated.accessToken()));
 
         String childUuid = opClient.createOperator("child_" + randomUuid().substring(0, 8)).uuid();
         createdOperators.add(childUuid);
@@ -294,7 +294,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         String uuid = uuidCreated.uuid();
         createdOperators.add(uuid);
 
-        FederationClient opClient = new FederationClient(serverEndpoint, uuidCreated.accessToken());
+        FederationClient opClient = track(new FederationClient(serverEndpoint, uuidCreated.accessToken()));
 
         try {
             opClient.createOperator("child");
@@ -369,7 +369,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         String origToken = uuidCreated.accessToken();
         assertNotNull(origToken);
 
-        FederationClient opClient = new FederationClient(serverEndpoint, origToken);
+        FederationClient opClient = track(new FederationClient(serverEndpoint, origToken));
         assertEquals(uuid, opClient.getSelf().uuid());
         opClient.close();
 
@@ -377,7 +377,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         assertNotEquals(origToken, newToken);
 
         try {
-            FederationClient oldClient = new FederationClient(serverEndpoint, origToken);
+            FederationClient oldClient = track(new FederationClient(serverEndpoint, origToken));
             oldClient.getSelf();
             fail("Expected FederationClientException for old token");
         } catch (FederationClientException e) {
@@ -390,8 +390,8 @@ class OperatorsClientTest extends FederationClientTestBase {
         FederationClient anon = createAnonymousClient();
         String fakeUuid = "00000000-0000-0000-0000-000000000000";
 
-        expectRequestFailure(() -> anon.getSelf(), new int[]{401, 403});
-        expectRequestFailure(() -> { anon.createOperator("unauthorized"); }, new int[]{401, 403});
+        expectRequestFailure(anon::getSelf, new int[]{401, 403});
+        expectRequestFailure(() -> anon.createOperator("unauthorized"), new int[]{401, 403});
         expectRequestFailure(() -> anon.disableOperator(fakeUuid), new int[]{401, 403});
         expectRequestFailure(() -> anon.deleteOperator(fakeUuid), new int[]{401, 403});
         expectRequestFailure(() -> anon.setOperatorPermissions(fakeUuid, true), new int[]{401, 403});
@@ -405,7 +405,7 @@ class OperatorsClientTest extends FederationClientTestBase {
 
     @Test
     void testMasterAccessTokenResolvesToRootOperator() {
-        FederationClient master = new FederationClient(serverEndpoint, serverAccessToken);
+        FederationClient master = track(new FederationClient(serverEndpoint, serverAccessToken));
         OperatorRecord root = master.getSelf();
         assertEquals("root", root.name());
         assertTrue(root.managementPermissions());
@@ -461,7 +461,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         createdOperators.add(uuid);
         client.setClientPermissions(uuid, true);
 
-        FederationClient opClient = new FederationClient(serverEndpoint, uuidCreated.accessToken());
+        FederationClient opClient = track(new FederationClient(serverEndpoint, uuidCreated.accessToken()));
         assertNotNull(opClient.getSelf().uuid());
 
         client.disableOperator(uuid);
@@ -504,7 +504,7 @@ class OperatorsClientTest extends FederationClientTestBase {
         String reportUuid = createReportForEntity(entityUuid);
         String blacklistUuid = createSecurityBlacklist(entityUuid);
 
-        expectRequestFailure(() -> { clientOnly.createOperator("child"); }, 403);
+        expectRequestFailure(() -> clientOnly.createOperator("child"), 403);
         expectRequestFailure(() -> clientOnly.blacklistEntity(entityUuid, reportUuid, IncidentType.SPAM, (int)(System.currentTimeMillis()/1000+3600)), 403);
         expectRequestFailure(() -> clientOnly.deleteEntity(entityUuid), 403);
         expectRequestFailure(() -> clientOnly.deleteBlacklistRecord(blacklistUuid), 403);
@@ -529,7 +529,7 @@ class OperatorsClientTest extends FederationClientTestBase {
 
     @Test
     void testSecurityMalformedAccessTokensAreRejected() {
-        FederationClient shortClient = new FederationClient(serverEndpoint, "short");
+        FederationClient shortClient = track(new FederationClient(serverEndpoint, "short"));
         try {
             shortClient.getSelf();
             fail("Expected FederationClientException");
@@ -558,8 +558,8 @@ class OperatorsClientTest extends FederationClientTestBase {
         client.setClientPermissions(uuid, true);
         String token = uuidCreated.accessToken();
 
-        FederationClient clientA = new FederationClient(serverEndpoint, token);
-        FederationClient clientB = new FederationClient(serverEndpoint, token);
+        FederationClient clientA = track(new FederationClient(serverEndpoint, token));
+        FederationClient clientB = track(new FederationClient(serverEndpoint, token));
 
         String entityUuid = clientA.pushEntity("cross-client-perm.com", "user");
         createdEntities.add(entityUuid);

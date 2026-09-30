@@ -1,8 +1,7 @@
 package net.nosial.jfederation;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import net.nosial.jfederation.classes.Json;
-import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.enums.RecordType;
 import net.nosial.jfederation.records.ServerInformation;
 
@@ -110,9 +109,9 @@ class ServerInformationTest extends FederationClientTestBase {
         assertTrue(spec.has("openapi"));
         assertTrue(spec.has("info"));
         assertTrue(spec.has("paths"));
-        assertTrue(spec.get("openapi").asText().startsWith("3."));
+        assertTrue(spec.get("openapi").asString().startsWith("3."));
         assertTrue(spec.get("info").has("title"));
-        assertFalse(spec.get("info").get("title").asText().isEmpty());
+        assertFalse(spec.get("info").get("title").asString().isEmpty());
         assertTrue(spec.get("paths").isObject());
         assertFalse(spec.get("paths").properties().isEmpty());
     }

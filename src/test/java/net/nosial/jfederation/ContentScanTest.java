@@ -36,7 +36,7 @@ class ContentScanTest extends FederationClientTestBase {
             var submission = trainingClient.submitReport(trainingEntityUuid, text, IncidentType.OTHER, null);
             String reportUuid = submission.getReport().uuid();
             trainingReports.add(reportUuid);
-            trainingEvidence.add(submission.getEvidence().get(0).uuid());
+            trainingEvidence.add(submission.getEvidence().getFirst().uuid());
             trainingClient.assignOperatorToReport(reportUuid, trainingClient.getSelf().uuid());
 
             trainingClient.closeReport(reportUuid, flag);
@@ -124,7 +124,7 @@ class ContentScanTest extends FederationClientTestBase {
         ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
-        assertTrue(scanned.getResolvedEntities().size() >= 1);
+        assertTrue(!scanned.getResolvedEntities().isEmpty());
 
         boolean found = scanned.getResolvedEntities().stream()
             .anyMatch(e -> e.getEntity().uuid().equals(entityUuid));
@@ -141,7 +141,7 @@ class ContentScanTest extends FederationClientTestBase {
         ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
-        assertTrue(scanned.getResolvedEntities().size() >= 1);
+        assertTrue(!scanned.getResolvedEntities().isEmpty());
 
         boolean found = scanned.getResolvedEntities().stream()
             .anyMatch(e -> e.getEntity().uuid().equals(entityUuid));
@@ -160,7 +160,7 @@ class ContentScanTest extends FederationClientTestBase {
         ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
-        assertTrue(scanned.getResolvedEntities().size() >= 1);
+        assertTrue(!scanned.getResolvedEntities().isEmpty());
 
         boolean found = scanned.getResolvedEntities().stream()
             .anyMatch(e -> e.getEntity().uuid().equals(entityUuid));
@@ -177,7 +177,7 @@ class ContentScanTest extends FederationClientTestBase {
         ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
-        assertTrue(scanned.getResolvedEntities().size() >= 1);
+        assertTrue(!scanned.getResolvedEntities().isEmpty());
 
         boolean found = scanned.getResolvedEntities().stream()
             .anyMatch(e -> e.getEntity().uuid().equals(entityUuid));
@@ -194,7 +194,7 @@ class ContentScanTest extends FederationClientTestBase {
         ScannedContent scanned = client.scanContent(text, null, null, null);
 
         assertNotNull(scanned);
-        assertTrue(scanned.getResolvedEntities().size() >= 1);
+        assertTrue(!scanned.getResolvedEntities().isEmpty());
 
         boolean found = scanned.getResolvedEntities().stream()
             .anyMatch(e -> e.getEntity().uuid().equals(entityUuid));
@@ -243,7 +243,7 @@ class ContentScanTest extends FederationClientTestBase {
         assertNotNull(scanned);
         assertEquals(1, scanned.getResolvedEntities().size());
 
-        ResolvedEntityPosition position = scanned.getResolvedEntities().get(0).getEntityPosition();
+        ResolvedEntityPosition position = scanned.getResolvedEntities().getFirst().getEntityPosition();
         assertNotNull(position);
         assertEquals(prefix.length(), position.offset());
         assertEquals(host.length(), position.length());
@@ -311,7 +311,7 @@ class ContentScanTest extends FederationClientTestBase {
 
         assertNotNull(scanned);
         assertNotNull(scanned.getAuthorEntity());
-        assertTrue(scanned.getAuthorEntity().getActiveBlacklists().size() >= 1);
+        assertTrue(!scanned.getAuthorEntity().getActiveBlacklists().isEmpty());
     }
 
     @Test
@@ -411,7 +411,7 @@ class ContentScanTest extends FederationClientTestBase {
         client.setClientPermissions(operatorUuid, false);
 
         String token = operatorUuidCreated.accessToken();
-        FederationClient restrictedClient = new FederationClient(serverEndpoint, token);
+        FederationClient restrictedClient = track(new FederationClient(serverEndpoint, token));
 
         assertThrows(FederationClientException.class,
             () -> restrictedClient.scanContent(BENIGN_SAMPLE_TEXT, null, null, null));
@@ -454,7 +454,7 @@ class ContentScanTest extends FederationClientTestBase {
         for (ResolvedEntity re : scanned.getResolvedEntities()) {
             if (re.getEntity().uuid().equals(entityUuid)) {
                 found = true;
-                assertTrue(re.getActiveBlacklists().size() >= 1);
+                assertTrue(!re.getActiveBlacklists().isEmpty());
                 break;
             }
         }
@@ -481,7 +481,7 @@ class ContentScanTest extends FederationClientTestBase {
         ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
         assertNotNull(scanned.getAuthorEntity());
-        assertTrue(scanned.getAuthorEntity().getActiveBlacklists().size() >= 1);
+        assertTrue(!scanned.getAuthorEntity().getActiveBlacklists().isEmpty());
         assertEquals(SuggestedAction.TEMPORARILY_BLOCK_ENTITY, scanned.suggestedAction());
         assertNotNull(scanned.suggestedLiftTimestamp());
         assertTrue(scanned.suggestedLiftTimestamp() >= expires - 5);
@@ -502,7 +502,7 @@ class ContentScanTest extends FederationClientTestBase {
         ScannedContent scanned = client.scanContent(BENIGN_SAMPLE_TEXT, entityUuid, null, null);
 
         assertNotNull(scanned.getAuthorEntity());
-        assertTrue(scanned.getAuthorEntity().getActiveBlacklists().size() >= 1);
+        assertTrue(!scanned.getAuthorEntity().getActiveBlacklists().isEmpty());
         assertEquals(SuggestedAction.PERMANENTLY_BLOCK_ENTITY, scanned.suggestedAction());
         assertNull(scanned.suggestedLiftTimestamp());
     }
@@ -551,7 +551,7 @@ class ContentScanTest extends FederationClientTestBase {
         assertNotNull(scanned.getAuthorEntity());
         assertNotNull(scanned.getAuthorEntity().getParentEntity());
         assertEquals(parentUuid, scanned.getAuthorEntity().getParentEntity().getEntity().uuid());
-        assertTrue(scanned.getAuthorEntity().getParentEntity().getActiveBlacklists().size() >= 1);
+        assertTrue(!scanned.getAuthorEntity().getParentEntity().getActiveBlacklists().isEmpty());
 
         assertEquals(SuggestedAction.BLOCK_CONTENT, scanned.suggestedAction());
         assertEquals(100.0, scanned.riskScore(), 0.001);
@@ -587,7 +587,7 @@ class ContentScanTest extends FederationClientTestBase {
                 found = true;
                 assertNotNull(re.getParentEntity());
                 assertEquals(parentUuid, re.getParentEntity().getEntity().uuid());
-                assertTrue(re.getParentEntity().getActiveBlacklists().size() >= 1);
+                assertTrue(!re.getParentEntity().getActiveBlacklists().isEmpty());
                 break;
             }
         }
@@ -617,8 +617,8 @@ class ContentScanTest extends FederationClientTestBase {
         for (ResolvedEntity re : scanned.getResolvedEntities()) {
             if (re.getEntity().uuid().equals(entityUuid)) {
                 found = true;
-                assertTrue(re.getActiveBlacklists().size() >= 1);
-                assertNotNull(re.getActiveBlacklists().get(0).expires());
+                assertTrue(!re.getActiveBlacklists().isEmpty());
+                assertNotNull(re.getActiveBlacklists().getFirst().expires());
                 break;
             }
         }

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class AttachmentClientTest extends FederationClientTestBase {
 
     @Test
-    void testUploadFileAttachment() throws IOException {
+    void testUploadFileAttachment() {
         String entityUuid = client.pushEntity("attachment-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "attachment_user");
         createdEntities.add(entityUuid);
 
@@ -39,7 +39,7 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testUploadNoteAttachment() throws IOException {
+    void testUploadNoteAttachment() {
         String entityUuid = client.pushEntity("note-attachment-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "note_user");
         createdEntities.add(entityUuid);
 
@@ -56,7 +56,7 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testUploadNoteAttachmentAppendsTxtExtension() throws IOException {
+    void testUploadNoteAttachmentAppendsTxtExtension() {
         String entityUuid = client.pushEntity("note-extension-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "note_ext_user");
         createdEntities.add(entityUuid);
 
@@ -73,7 +73,7 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testUploadNoteAttachmentKeepsExistingTxtExtension() throws IOException {
+    void testUploadNoteAttachmentKeepsExistingTxtExtension() {
         String entityUuid = client.pushEntity("note-keeps-ext-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "note_keep_user");
         createdEntities.add(entityUuid);
 
@@ -90,7 +90,7 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testUploadFileAttachmentWithCustomFileName() throws IOException {
+    void testUploadFileAttachmentWithCustomFileName() {
         String entityUuid = client.pushEntity("custom-name-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "custom_name");
         createdEntities.add(entityUuid);
 
@@ -149,9 +149,7 @@ class AttachmentClientTest extends FederationClientTestBase {
 
         com.sun.net.httpserver.HttpServer httpServer = com.sun.net.httpserver.HttpServer.create(
             new java.net.InetSocketAddress("127.0.0.1", 0), 0);
-        httpServer.createContext("/missing.bin", exchange -> {
-            exchange.sendResponseHeaders(404, -1);
-        });
+        httpServer.createContext("/missing.bin", exchange -> exchange.sendResponseHeaders(404, -1));
         httpServer.start();
         try {
             String fileUrl = "http://127.0.0.1:" + httpServer.getAddress().getPort() + "/missing.bin";
@@ -240,7 +238,7 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testDeleteAttachment() throws IOException {
+    void testDeleteAttachment() {
         String entityUuid = client.pushEntity("delete-attachment-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "delete_attachment_user");
         createdEntities.add(entityUuid);
 
@@ -297,7 +295,7 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testGetEvidenceAttachments() throws IOException {
+    void testGetEvidenceAttachments() {
         String entityUuid = client.pushEntity("evidence-attachments-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "evidence_attachments_user");
         createdEntities.add(entityUuid);
 
@@ -318,7 +316,7 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testListAttachments() throws IOException {
+    void testListAttachments() {
         String entityUuid = client.pushEntity("list-attachments-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "list_attachments_user");
         createdEntities.add(entityUuid);
 
@@ -343,7 +341,7 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testUploadAttachmentUnauthorized() throws IOException {
+    void testUploadAttachmentUnauthorized() {
         FederationClient restricted = createLimitedOperator("no-upload");
 
         String entityUuid = client.pushEntity("unauthorized-upload-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "unauthorized_user");
@@ -369,7 +367,7 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testMultipleAttachmentsPerEvidence() throws IOException {
+    void testMultipleAttachmentsPerEvidence() {
         String entityUuid = client.pushEntity("multiple-attachments-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "multiple_attachments_user");
         createdEntities.add(entityUuid);
 

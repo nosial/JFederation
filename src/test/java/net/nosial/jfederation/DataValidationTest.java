@@ -42,7 +42,7 @@ class DataValidationTest extends FederationClientTestBase {
     void testEntityIdValidation() {
         String host = "validation-test.com";
         String[] invalidIds = {
-            strRepeat('a', 1000),
+            "a".repeat(1000),
             "id\nwith\nnewlines",
             "id\twith\ttabs",
             "id/with/slashes",
@@ -99,7 +99,7 @@ class DataValidationTest extends FederationClientTestBase {
         String[] invalidNames = {
             "",
             "   ",
-            strRepeat('a', 1000),
+            "a".repeat(1000),
             "name\nwith\nnewlines",
             "name\twith\ttabs",
         };
@@ -154,7 +154,7 @@ class DataValidationTest extends FederationClientTestBase {
         String[] invalidTags = {
             "",
             "   ",
-            strRepeat('a', 1000),
+            "a".repeat(1000),
             "tag\nwith\nnewlines",
             "tag with spaces",
             "tag/with/slashes",
@@ -309,7 +309,7 @@ class DataValidationTest extends FederationClientTestBase {
         int[] lengths = {1, 100, 1000, 10000};
 
         for (int length : lengths) {
-            String content = strRepeat('a', length);
+            String content = "a".repeat(length);
             try {
                 String evidenceUuid = client.submitEvidence(entityUuid, content, "Length test", "boundary");
                 createdEvidenceRecords.add(evidenceUuid);
@@ -353,7 +353,7 @@ class DataValidationTest extends FederationClientTestBase {
         String entityUuid = client.pushEntity("evidence-validation.com", "evidence_user");
         createdEntities.add(entityUuid);
 
-        String veryLongContent = strRepeat('a', 100000);
+        String veryLongContent = "a".repeat(100000);
 
         try {
             String evidenceUuid = client.submitEvidence(entityUuid, veryLongContent, "Test note", "test_tag");
@@ -364,13 +364,5 @@ class DataValidationTest extends FederationClientTestBase {
             assertTrue(e.getStatusCode() == 400 || e.getStatusCode() == 422,
                 "Expected 400 or 422 for invalid evidence content, got " + e.getStatusCode());
         }
-    }
-
-    private static String strRepeat(char c, int count) {
-        StringBuilder sb = new StringBuilder(count);
-        for (int i = 0; i < count; i++) {
-            sb.append(c);
-        }
-        return sb.toString();
     }
 }

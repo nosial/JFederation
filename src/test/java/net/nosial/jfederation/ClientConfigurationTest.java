@@ -143,7 +143,7 @@ class ClientConfigurationTest {
     @Test
     void testClientWithNullAccessToken() {
         String endpoint = FederationClientTestBase.serverEndpoint;
-        FederationClient client = new FederationClient(endpoint, (String) null);
+        FederationClient client = new FederationClient(endpoint, null);
         assertNotNull(client);
         assertNotNull(client.getServerInformation());
         try {
@@ -219,7 +219,7 @@ class ClientConfigurationTest {
         OperatorCreated createdOperator = admin.createOperator("token-switch-" + System.currentTimeMillis());
         String operatorUuid = createdOperator.uuid();
         try {
-            OperatorRecord operator = admin.getOperator(operatorUuid);
+            assertEquals(operatorUuid, admin.getOperator(operatorUuid).uuid());
             assertNotNull(createdOperator.accessToken(), "Operator access token should be available at creation time");
 
             FederationClient switched = new FederationClient(FederationClientTestBase.serverEndpoint);

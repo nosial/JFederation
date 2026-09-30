@@ -4,7 +4,6 @@ import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.BlacklistRecord;
 import net.nosial.jfederation.records.OperatorCreated;
-import net.nosial.jfederation.records.OperatorRecord;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -170,7 +169,7 @@ class BlacklistClientTest extends FederationClientTestBase {
         client.setOperatorPermissions(basicOpUuid, false);
         client.setClientPermissions(basicOpUuid, false);
 
-        FederationClient basicClient = new FederationClient(serverEndpoint, basicOpCreated.accessToken());
+        FederationClient basicClient = track(new FederationClient(serverEndpoint, basicOpCreated.accessToken()));
 
         String entityUuid = createSecurityEntity();
         String reportUuid = createReportForEntity(entityUuid);

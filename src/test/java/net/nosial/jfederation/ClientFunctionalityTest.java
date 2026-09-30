@@ -13,8 +13,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -160,7 +158,7 @@ class ClientFunctionalityTest extends FederationClientTestBase {
         String initialToken = uuidCreated.accessToken();
         assertNotNull(initialToken);
 
-        FederationClient opClient = new FederationClient(serverEndpoint, initialToken);
+        FederationClient opClient = track(new FederationClient(serverEndpoint, initialToken));
         assertEquals(uuid, opClient.getSelf().uuid());
 
         String oldToken = opClient.getAccessToken();
@@ -169,7 +167,7 @@ class ClientFunctionalityTest extends FederationClientTestBase {
         assertNotEquals(oldToken, newToken);
         assertEquals(newToken, opClient.getAccessToken());
 
-        FederationClient newOpClient = new FederationClient(serverEndpoint, newToken);
+        FederationClient newOpClient = track(new FederationClient(serverEndpoint, newToken));
         assertEquals(uuid, newOpClient.getSelf().uuid());
 
         opClient.close();
@@ -184,7 +182,7 @@ class ClientFunctionalityTest extends FederationClientTestBase {
         client.setManagementPermissions(uuid, true);
 
         String initialToken = uuidCreated.accessToken();
-        FederationClient opClient = new FederationClient(serverEndpoint, initialToken);
+        FederationClient opClient = track(new FederationClient(serverEndpoint, initialToken));
         String beforeToken = opClient.getAccessToken();
         opClient.generateAccessToken();
         String afterToken = opClient.getAccessToken();
@@ -202,7 +200,7 @@ class ClientFunctionalityTest extends FederationClientTestBase {
         client.setClientPermissions(opUuid, true);
 
         String opToken = opUuidCreated.accessToken();
-        FederationClient opClient = new FederationClient(serverEndpoint, opToken);
+        FederationClient opClient = track(new FederationClient(serverEndpoint, opToken));
 
         String entityUuid = opClient.pushEntity("list-op-bl-" + randomUuid().substring(0, 8) + ".com", "op_bl_user");
         createdEntities.add(entityUuid);
@@ -264,7 +262,7 @@ class ClientFunctionalityTest extends FederationClientTestBase {
             .connectionPool(new ConnectionPool(2, 10, TimeUnit.SECONDS))
             .build();
 
-        FederationClient customClientInstance = new FederationClient(serverEndpoint, serverAccessToken, customClient);
+        FederationClient customClientInstance = track(new FederationClient(serverEndpoint, serverAccessToken, customClient));
         assertNotNull(customClientInstance);
 
         ServerInformation info = customClientInstance.getServerInformation();
@@ -298,7 +296,7 @@ class ClientFunctionalityTest extends FederationClientTestBase {
         client.setClientPermissions(opUuid, true);
 
         String opToken = opUuidCreated.accessToken();
-        FederationClient opClient = new FederationClient(serverEndpoint, opToken);
+        FederationClient opClient = track(new FederationClient(serverEndpoint, opToken));
 
         String entityUuid = opClient.pushEntity("list-op-ev-" + randomUuid().substring(0, 8) + ".com", "op_ev_user");
         createdEntities.add(entityUuid);

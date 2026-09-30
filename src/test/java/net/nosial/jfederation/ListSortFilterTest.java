@@ -52,7 +52,7 @@ class ListSortFilterTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Sorted report", IncidentType.SPAM, null);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         List<ReportRecord> opened = client.listReports(1, 10, "OPENED", "created", "DESC");
         List<String> openedUuids = opened.stream().map(ReportRecord::uuid).toList();
@@ -85,7 +85,7 @@ class ListSortFilterTest extends FederationClientTestBase {
     }
 
     @Test
-    void testListBlacklistWithSortAndCategory() throws Exception {
+    void testListBlacklistWithSortAndCategory() {
         String entityUuid = client.pushEntity("sort-blacklist-" + randomUuid().substring(0, 8) + ".com", "sort_blacklist");
         createdEntities.add(entityUuid);
 
@@ -104,7 +104,7 @@ class ListSortFilterTest extends FederationClientTestBase {
     }
 
     @Test
-    void testListAttachmentsWithSortAndCategory() throws Exception {
+    void testListAttachmentsWithSortAndCategory() {
         String entityUuid = client.pushEntity("sort-attach-" + randomUuid().substring(0, 8) + ".com", "sort_attach");
         createdEntities.add(entityUuid);
         String evidenceUuid = client.submitEvidence(entityUuid, "Attachment evidence", "note", "tag", false);

@@ -10,7 +10,6 @@ import net.nosial.jfederation.records.ServerInformation;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -23,7 +22,7 @@ class EntitiesClientTest extends FederationClientTestBase {
         assertNotNull(userEntityUuid);
 
         EntityRecord rec = client.getEntityRecord(userEntityUuid);
-        assertEquals(rec.uuid(), rec.uuid());
+        assertEquals(userEntityUuid, rec.uuid());
         assertNotNull(rec.id());
         assertEquals("example.com", rec.host());
 

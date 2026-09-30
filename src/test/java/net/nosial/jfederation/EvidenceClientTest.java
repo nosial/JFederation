@@ -45,7 +45,7 @@ class EvidenceClientTest extends FederationClientTestBase {
         client.setOperatorPermissions(basicOpUuid, false);
         client.setClientPermissions(basicOpUuid, false);
 
-        FederationClient basicClient = new FederationClient(serverEndpoint, basicOpCreated.accessToken());
+        FederationClient basicClient = track(new FederationClient(serverEndpoint, basicOpCreated.accessToken()));
 
         String entityUuid = client.pushEntity("example.com", "alice123");
         createdEntities.add(entityUuid);
@@ -292,7 +292,7 @@ class EvidenceClientTest extends FederationClientTestBase {
         ReportSubmission submission = client.submitReport(entityUuid, "Report for evidence linking", IncidentType.SPAM);
         String reportUuid = submission.getReport().uuid();
         createdReports.add(reportUuid);
-        createdEvidenceRecords.add(submission.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(submission.getEvidence().getFirst().uuid());
 
         String standaloneEvidenceUuid = client.submitEvidence(entityUuid, "Standalone evidence", "Note", "standalone");
         createdEvidenceRecords.add(standaloneEvidenceUuid);
@@ -338,11 +338,11 @@ class EvidenceClientTest extends FederationClientTestBase {
 
         ReportSubmission reportA = client.submitReport(entityUuid, "Report A", IncidentType.SPAM);
         createdReports.add(reportA.getReport().uuid());
-        createdEvidenceRecords.add(reportA.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(reportA.getEvidence().getFirst().uuid());
 
         ReportSubmission reportB = client.submitReport(entityUuid, "Report B", IncidentType.SCAM);
         createdReports.add(reportB.getReport().uuid());
-        createdEvidenceRecords.add(reportB.getEvidence().get(0).uuid());
+        createdEvidenceRecords.add(reportB.getEvidence().getFirst().uuid());
 
         client.addEvidenceToReport(evidenceUuid, reportA.getReport().uuid());
         assertEquals(reportA.getReport().uuid(), client.getEvidenceRecord(evidenceUuid).report());
@@ -392,7 +392,7 @@ class EvidenceClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testEvidenceDeletionCascadesToAttachments() throws java.io.IOException {
+    void testEvidenceDeletionCascadesToAttachments() {
         String entityUuid = client.pushEntity("evidence-attachment-cascade-" + randomUuid().substring(0, 8) + ".com", "cascade_user");
         createdEntities.add(entityUuid);
 
@@ -456,9 +456,7 @@ class EvidenceClientTest extends FederationClientTestBase {
     void testEvidenceClassificationRequiresManagementPermission() {
         String entityUuid = createSecurityEntity();
         String evidenceUuid = createSecurityEvidence(entityUuid);
-        FederationClient clientOnly = createLimitedOperator("classification_client", false, false, true);
-
-        try {
+        try (FederationClient clientOnly = createLimitedOperator("classification_client", false, false, true)) {
             FederationClientException classifyException = assertThrows(FederationClientException.class,
                 () -> clientOnly.classifyEvidence(evidenceUuid, ClassificationFlag.MALICIOUS));
             assertEquals(403, classifyException.getStatusCode());
@@ -474,8 +472,6 @@ class EvidenceClientTest extends FederationClientTestBase {
                     ClassificationFlag.MALICIOUS
                 ));
             assertEquals(403, submitException.getStatusCode());
-        } finally {
-            clientOnly.close();
         }
     }
 }
