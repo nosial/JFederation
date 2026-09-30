@@ -240,24 +240,24 @@ String refreshed = client.generateAccessToken(true); // refresh and update this 
 Entities are the subjects tracked by the federation; users, domains, IP addresses, or any other
 identifier present in scanned content:
 
-| Method                                                    | Description                                                       |
-|-----------------------------------------------------------|-------------------------------------------------------------------|
-| `getEntityRecord(identifier)`                             | Returns the record of an entity by identifier                     |
-| `queryEntity(identifier)`                                 | Returns an entity's relationship group and active blacklist state |
-| `searchEntities(query, page, limit, category, by, order)` | Searches entities by identifier                                   |
-| `listEntities(page, limit, category, by, order)`          | Lists entities                                                    |
-| `getTopThreats(limit)`                                    | Lists the highest-risk entities                                   |
-| `updateEntity(identifier, metadata)`                      | Updates the metadata of an entity                                 |
-| `deleteEntity(identifier)`                                | Deletes an entity                                                 |
-| `setEntityWhitelist(identifier, whitelisted)`             | (Un)whitelists an entity, exempting it from scans                 |
-| `clearEntityReputation(identifier)`                       | Clears the accumulated reputation of an entity                    |
-| `setEntityRelationship(identifier, targetUuid, type)`     | Sets the relationship between two entities                        |
-| `clearEntityRelationship(identifier)`                     | Clears the relationship of an entity                              |
-| `pushEntity(host, identifier, metadata)`                  | Pushes an entity to another federation server                     |
-| `listEntityAuditLogs(identifier, ...)`                    | Lists the audit log entries involving an entity                   |
-| `listEntityBlacklistRecords(identifier, ...)`             | Lists the blacklist records against an entity                     |
-| `listEntityEvidenceRecords(identifier, ...)`              | Lists the evidence submitted against an entity                    |
-| `listEntityReports(identifier, ...)`                      | Lists the reports submitted against an entity                     |
+| Method                                                             | Description                                                       |
+|--------------------------------------------------------------------|-------------------------------------------------------------------|
+| `getEntityRecord(identifier)`                                      | Returns the record of an entity by identifier                     |
+| `queryEntity(identifier)`                                          | Returns an entity's relationship group and active blacklist state |
+| `searchEntities(query, page, limit, category, by, order)`          | Searches entities by identifier                                   |
+| `listEntities(page, limit, category, by, order)`                   | Lists entities                                                    |
+| `getTopThreats(limit)`                                             | Lists the highest-risk entities                                   |
+| `updateEntity(identifier, metadata)`                               | Updates the metadata of an entity                                 |
+| `deleteEntity(identifier)`                                         | Deletes an entity                                                 |
+| `setEntityWhitelist(identifier, whitelisted)`                      | (Un)whitelists an entity, exempting it from scans                 |
+| `clearEntityReputation(identifier)`                                | Clears the accumulated reputation of an entity                    |
+| `setEntityRelationship(identifier, relatedEntityIdentifier, type)` | Sets the relationship between two entities                        |
+| `clearEntityRelationship(identifier)`                              | Clears the relationship of an entity                              |
+| `pushEntity(host, identifier, metadata)`                           | Pushes an entity to another federation server                     |
+| `listEntityAuditLogs(identifier, ...)`                             | Lists the audit log entries involving an entity                   |
+| `listEntityBlacklistRecords(identifier, ...)`                      | Lists the blacklist records against an entity                     |
+| `listEntityEvidenceRecords(identifier, ...)`                       | Lists the evidence submitted against an entity                    |
+| `listEntityReports(identifier, ...)`                               | Lists the reports submitted against an entity                     |
 
 Record listings of entities are `EntityRecord` objects carrying the identifier, risk score,
 classification flag, relationship hierarchy, and metadata of the entity.
