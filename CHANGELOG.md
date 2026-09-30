@@ -6,10 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [1.0.9] - Ongoing
+## [1.0.9] - 2026-09-30
 
-This is an ongoing update
+This update migrates the library to Jackson 3 and OkHttp 5, which changes public API types.
 
+### Changed
+ - **Breaking:** Migrated from Jackson 2 (`com.fasterxml.jackson`) to Jackson 3 (`tools.jackson`, `3.2.3`).
+   `Json.mapper()`, `Json.readTree()`, `FederationClient.getSpecification()` and the raw `JsonNode` components of
+   `EntityRecord`, `EvidenceRecord`, `SearchResult`, `ScannedContent`, `ResolvedEntity` and `ReportSubmission` now use
+   the `tools.jackson.databind` types. Jackson annotations remain in `com.fasterxml.jackson.annotation`.
+ - `Json` now wraps `JacksonException` (unchecked in Jackson 3) instead of `JsonProcessingException`.
+ - The shared mapper disables `FAIL_ON_NULL_FOR_PRIMITIVES`, keeping the Jackson 2 behavior of reading JSON `null`
+   into primitive fields as their default value.
+ - **Breaking:** Upgraded OkHttp to `5.5.0`, using the `com.squareup.okhttp3:okhttp-jvm` artifact required by Maven
+   builds. Callers passing their own `OkHttpClient` to `FederationClient` must use OkHttp 5.
+ - Upgraded SLF4J to `2.0.20`, Logback to `1.6.4`, JUnit to `6.1.3`, and the compiler, surefire, source and javadoc
+   Maven plugins to their latest versions.
+ - Updated the client integration tests for servers that auto-assign new reports to an operator.
+
+### Fixed
+ - `downloadAttachment()` no longer trusts the file name in the server's `Content-Disposition` header as a path.
+   Only its final path segment is used, and the download is refused if it would resolve outside the target
+   directory. Previously a name such as `../../file` could write outside the chosen directory.
+ - Removed response-body null checks that could never trigger under OkHttp 5.
+ - Test clients created by the test suite are now closed after each test instead of leaking their connection pools
+   and dispatcher threads.
+ - Fixed test assertions that could never fail and unused test values that hid missing checks.
 
 
 ## [1.0.8] - 2026-09-30
