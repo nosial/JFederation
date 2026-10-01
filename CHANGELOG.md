@@ -6,9 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [1.0.10] - Ongoing
+## [1.0.10] - 2026-10-01
 
-This is an ongoing update
+This update follows version `v1.0-R4` of the OFD Specification.
+
+### Changed
+ - The entity relationship security test now expects operators with client or management permissions to set and clear
+   entity relationships, and operators holding only operator permissions to be rejected with HTTP 403. The client
+   itself is unchanged.
 
 
 ## [1.0.9] - 2026-09-30
