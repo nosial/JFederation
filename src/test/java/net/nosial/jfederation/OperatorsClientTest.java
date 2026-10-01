@@ -399,7 +399,18 @@ class OperatorsClientTest extends FederationClientTestBase {
         expectRequestFailure(() -> anon.setClientPermissions(fakeUuid, true), new int[]{401, 403});
         expectRequestFailure(() -> anon.setAutoAssign(fakeUuid, true), new int[]{401, 403});
         expectRequestFailure(() -> anon.generateOperatorAccessToken(fakeUuid), new int[]{401, 403});
-        expectRequestFailure(() -> anon.listOperators(1, 10), new int[]{401, 403});
+        anon.close();
+    }
+
+    @Test
+    void testUnauthenticatedRequestsCanReadOperatorRecords() {
+        // Operator records are public since v1.0-R2 of the OFD Specification
+        String rootUuid = client.getSelf().uuid();
+        FederationClient anon = createAnonymousClient();
+
+        List<OperatorRecord> operators = anon.listOperators(1, 100);
+        assertTrue(operators.stream().anyMatch(o -> o.uuid().equals(rootUuid)), "Anonymous operator list should include the root operator");
+        assertEquals(rootUuid, anon.getOperator(rootUuid).uuid());
         anon.close();
     }
 
