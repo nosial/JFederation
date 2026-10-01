@@ -321,18 +321,40 @@ class EntitiesClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testSecurityEntityRelationshipRequiresOperatorPermissions() {
+    void testSecurityEntityRelationshipRequiresClientPermissions() {
         String entityA = createSecurityEntity();
         String entityB = createSecurityEntity();
 
+        // Client permissions authorize relationships, and management permissions inherit them.
         FederationClient clientOnly = createLimitedOperator("entity_rel_client", false, false, true);
+        clientOnly.setEntityRelationship(entityA, entityB, EntityRelationshipType.ALTERNATIVE);
+        assertEquals(entityB, client.getEntityRecord(entityA).relationshipEntity());
+        clientOnly.clearEntityRelationship(entityA);
+        assertNull(client.getEntityRecord(entityA).relationshipEntity());
+
+        FederationClient managementOnly = createLimitedOperator("entity_rel_management", true, false, false);
+        managementOnly.setEntityRelationship(entityA, entityB, EntityRelationshipType.PROXY);
+        assertEquals(entityB, client.getEntityRecord(entityA).relationshipEntity());
+        managementOnly.clearEntityRelationship(entityA);
+        assertNull(client.getEntityRecord(entityA).relationshipEntity());
+
+        // Operator permissions do not inherit client permissions.
+        FederationClient operatorOnly = createLimitedOperator("entity_rel_operator", false, true, false);
         try {
-            clientOnly.setEntityRelationship(entityA, entityB, EntityRelationshipType.ALTERNATIVE);
-            fail("Client-only should not set entity relationships");
+            operatorOnly.setEntityRelationship(entityA, entityB, EntityRelationshipType.ALTERNATIVE);
+            fail("Operator-only should not set entity relationships");
         } catch (FederationClientException e) {
             assertEquals(403, e.getStatusCode());
         }
-        clientOnly.close();
+
+        client.setEntityRelationship(entityA, entityB, EntityRelationshipType.CHILD);
+        try {
+            operatorOnly.clearEntityRelationship(entityA);
+            fail("Operator-only should not clear entity relationships");
+        } catch (FederationClientException e) {
+            assertEquals(403, e.getStatusCode());
+        }
+        assertEquals(entityB, client.getEntityRecord(entityA).relationshipEntity());
     }
 
     @Test
