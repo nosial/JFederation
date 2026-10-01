@@ -186,7 +186,7 @@ class ContentScanTest extends FederationClientTestBase {
 
     @Test
     void testScanContentResolvesIpv6() {
-        String ip = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
+        String ip = "2001:db8:85a3::8a2e:370:7334";
         String entityUuid = client.pushEntity(ip);
         createdEntities.add(entityUuid);
 
@@ -336,7 +336,7 @@ class ContentScanTest extends FederationClientTestBase {
         String emailHost = "scan-position-email.com";
         String emailId = "position_user";
         String ipv4 = "203.0.113.45";
-        String ipv6 = "2001:0db8:85a3:0000:0000:8a2e:0370:7335";
+        String ipv6 = "2001:db8:85a3::8a2e:370:7335";
 
         String domainUuid = client.pushEntity(domainHost);
         String emailUuid = client.pushEntity(emailHost, emailId);
