@@ -3,5 +3,7 @@ jdk:
 before_install:
   - sdk install java 24-tem
   - sdk use java 24-tem
-  - sdk install maven
-  - mvn -v
+  # ratelimit fix
+  - mkdir -p ~/.m2 && printf '%s\n' '<settings><mirrors><mirror><id>google-maven-central</id><mirrorOf>central</mirrorOf><url>https://maven-central.storage-download.googleapis.com/maven2/</url></mirror></mirrors></settings>' > ~/.m2/settings.xml
+  - sed -i 's#https://repo.maven.apache.org/maven2/#https://maven-central.storage-download.googleapis.com/maven2/#' .mvn/wrapper/maven-wrapper.properties
+  - ./mvnw -v
