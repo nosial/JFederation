@@ -7,4 +7,8 @@ before_install:
   - mkdir -p ~/.m2 && printf '%s\n' '<settings><mirrors><mirror><id>google-maven-central</id><mirrorOf>central</mirrorOf><url>https://maven-central.storage-download.googleapis.com/maven2/</url></mirror></mirrors></settings>' > ~/.m2/settings.xml
   - sed -i 's#https://repo.maven.apache.org/maven2/#https://maven-central.storage-download.googleapis.com/maven2/#' .mvn/wrapper/maven-wrapper.properties
   - rm -rf ~/.m2/wrapper
-  - MVNW_VERBOSE=true ./mvnw -v
+  # diagnostics: an exported SHELLOPTS leaks mvnw's `set -f` into bin/mvn and breaks its classpath glob
+  - ls -l /bin/sh; echo "SHELLOPTS=${SHELLOPTS-<unset>}"; env | grep -E '^(SHELLOPTS|BASHOPTS|MAVEN_|M2_)' || true
+  - env -u SHELLOPTS ./mvnw -v
+install:
+  - env -u SHELLOPTS ./mvnw clean install -DskipTests
