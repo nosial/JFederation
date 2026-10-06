@@ -1106,8 +1106,7 @@ class SearchTest extends FederationClientTestBase {
         String evidenceUuid = client.submitEvidence(entityUuid, "actual text content", noteText, "note_tag");
         createdEvidenceRecords.add(evidenceUuid);
 
-        // Authenticated operators match the note through the server's extended search, so search without authentication
-        List<EvidenceRecord> results = createAnonymousClient().searchEvidence(noteText, 1, 10);
+        List<EvidenceRecord> results = client.searchEvidence(noteText, 1, 10);
         boolean found = false;
         for (EvidenceRecord result : results) {
             if (result.uuid().equals(evidenceUuid)) {
