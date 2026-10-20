@@ -360,12 +360,16 @@ class Ofd2ClientTest extends FederationClientTestBase {
         String number = uniqueTelephoneNumber();
         String written = "+1 " + number.substring(1, 4) + "-" + number.substring(4, 7) + "-" + number.substring(7);
 
+        // Scanning resolves mentions against the entity registry, so the number must be registered first
+        String entityUuid = client.pushEntity(EntityRecord.TELEPHONE_ENTITY_HOST, number);
+        createdEntities.add(entityUuid);
+
         ScannedContent scanned = client.scanContent("Call me at " + written + " for the prize");
         ResolvedEntity telephone = scanned.getResolvedEntities().stream()
             .filter(entity -> entity.getEntity().isTelephone())
             .findFirst().orElseThrow(() -> new AssertionError("The number should be resolved as a telephone entity"));
-        createdEntities.add(telephone.getEntity().uuid());
 
+        assertEquals(entityUuid, telephone.getEntity().uuid());
         assertEquals(number, telephone.getEntity().id());
         assertSame(NamedEntityType.TELEPHONE, telephone.getEntityPosition().type());
     }

@@ -168,8 +168,9 @@ class ThreadSafetyTest extends FederationClientTestBase {
         executor.submit(() -> {
             try {
                 latch.await();
-                managerC.setManagementPermissions(targetUuid, true);
+                // Client permissions can't be revoked while management permissions are held, which inherit them
                 managerC.setClientPermissions(targetUuid, false);
+                managerC.setManagementPermissions(targetUuid, true);
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 fail("Manager C failed: " + e.getMessage());
@@ -384,9 +385,9 @@ class ThreadSafetyTest extends FederationClientTestBase {
             String operatorUuid = client.createOperator("cross_bulk_operator_" + i + "_" + randomUuid().substring(0, 4)).uuid();
             createdOperators.add(operatorUuid);
 
+            client.setClientPermissions(operatorUuid, i % 2 == 1);
             client.setManagementPermissions(operatorUuid, i % 2 == 0);
             client.setOperatorPermissions(operatorUuid, i % 3 == 0);
-            client.setClientPermissions(operatorUuid, i % 2 == 1);
         }
 
         for (String uuid : entityUuids) {

@@ -413,6 +413,12 @@ class ContentScanTest extends FederationClientTestBase {
         String token = operatorUuidCreated.accessToken();
         FederationClient restrictedClient = track(new FederationClient(serverEndpoint, token));
 
+        // Client permissions are only required when scanning is not public
+        if (client.getServerInformation().publicScanContent()) {
+            assertNotNull(restrictedClient.scanContent(BENIGN_SAMPLE_TEXT, null, null, null));
+            return;
+        }
+
         assertThrows(FederationClientException.class,
             () -> restrictedClient.scanContent(BENIGN_SAMPLE_TEXT, null, null, null));
     }

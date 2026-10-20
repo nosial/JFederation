@@ -355,7 +355,12 @@ class SearchTest extends FederationClientTestBase {
 
     @Test
     void testSearchWithUnicodeCharacters() {
-        String entityUuid = client.pushEntity("unicode-test.com", "caf\u00e9_\u00f1u\u00f1o");
+        // The local part of an entity must be ASCII, but a search query may contain any characters
+        FederationClientException exception = assertThrows(FederationClientException.class,
+            () -> client.pushEntity("unicode-test.com", "caf\u00e9_\u00f1u\u00f1o"));
+        assertEquals(400, exception.getStatusCode());
+
+        String entityUuid = client.pushEntity("unicode-test.com", "cafe_nuno");
         createdEntities.add(entityUuid);
 
         List<EntityRecord> results = client.searchEntities("caf\u00e9", 1, 10);

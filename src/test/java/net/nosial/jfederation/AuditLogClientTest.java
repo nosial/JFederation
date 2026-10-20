@@ -443,9 +443,15 @@ class AuditLogClientTest extends FederationClientTestBase {
         String targetUuid = targetUuidCreated.uuid();
         createdOperators.add(targetUuid);
 
+        // Another operator's audit log entries are only withheld when the audit log is not public
+        if (client.getServerInformation().publicAuditLogs()) {
+            assertNotNull(snooper.listOperatorAuditLogs(targetUuid, 1, 10));
+            return;
+        }
+
         expectRequestFailure(
             () -> snooper.listOperatorAuditLogs(targetUuid, 1, 10),
-            new int[]{400, 403},
+            new int[]{403},
             "Client-only operator should not be able to list another operator's audit logs"
         );
     }

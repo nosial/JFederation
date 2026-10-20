@@ -1353,7 +1353,8 @@ public final class FederationClient implements AutoCloseable
      */
     public void setManagementPermissions(String operatorUuid, boolean hasManagementPermissions)
     {
-        updateOperatorPermissions(operatorUuid, null, hasManagementPermissions, null);
+        // Management permissions inherit client permissions, so granting them grants client permissions as well
+        updateOperatorPermissions(operatorUuid, hasManagementPermissions ? Boolean.TRUE : null, hasManagementPermissions, null);
     }
 
     /**

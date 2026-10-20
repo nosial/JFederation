@@ -417,20 +417,21 @@ class EvidenceClientTest extends FederationClientTestBase {
     }
 
     @Test
-    void testEvidenceClassificationIsImmutable() {
+    void testEvidenceClassificationIsReplaced() {
         String entityUuid = client.pushEntity("classified-evidence-" + randomUuid().substring(0, 8) + ".com", "classified_evidence");
         createdEntities.add(entityUuid);
 
-        String evidenceUuid = client.submitEvidence(entityUuid, "Immutable evidence classification", "Note", "classified");
+        String evidenceUuid = client.submitEvidence(entityUuid, "Replaced evidence classification", "Note", "classified");
         createdEvidenceRecords.add(evidenceUuid);
 
         client.classifyEvidence(evidenceUuid, ClassificationFlag.NORMAL);
         assertEquals(ClassificationFlag.NORMAL, client.getEvidenceRecord(evidenceUuid).classificationFlag());
 
-        FederationClientException exception = assertThrows(FederationClientException.class,
-            () -> client.classifyEvidence(evidenceUuid, ClassificationFlag.MALICIOUS));
-        assertEquals(409, exception.getStatusCode());
-        assertEquals(ClassificationFlag.NORMAL, client.getEvidenceRecord(evidenceUuid).classificationFlag());
+        // Classifying evidence again replaces its classification, the same classification leaves it unchanged
+        client.classifyEvidence(evidenceUuid, ClassificationFlag.MALICIOUS);
+        assertEquals(ClassificationFlag.MALICIOUS, client.getEvidenceRecord(evidenceUuid).classificationFlag());
+        client.classifyEvidence(evidenceUuid, ClassificationFlag.MALICIOUS);
+        assertEquals(ClassificationFlag.MALICIOUS, client.getEvidenceRecord(evidenceUuid).classificationFlag());
     }
 
     @Test
