@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is an ongoing update
 
+### Fixed
+ - `setManagementPermissions(uuid, true)` grants client permissions along with management permissions as documented,
+   so revoking management permissions afterwards leaves the operator with client permissions
+
+### Changed
+ - The tests of `Ofd2ClientTest` and `Ofd2RecordsTest` were moved into the test classes of the area they cover
+ - Tests that depend on the server configuration (public audit logs, public scanning, public telephone entities)
+   assert the behavior of the configuration the server publishes instead of a fixed one
+ - Tests follow OFD 2.0 where they contradicted it: evidence classifications are replaced, local parts of entities
+   are ASCII, scanning resolves only registered entities, and client permissions can't be revoked while management
+   permissions are held
+
 
 ## [2.0.0] - 2026-10-20
 
