@@ -467,10 +467,10 @@ class ReportsClientTest extends FederationClientTestBase {
         ReportRecord report = client.getReport(reportUuid);
         assertTrue(report.opened());
         assertEquals(submitterUuid, report.submittingOperator());
-        // The server may auto-assign new reports to an operator flagged with auto_assign
+        // The server may auto-assign new reports to an operator that opts in to reports of their kind
         if (report.assignedOperator() != null && !report.assignedOperator().isEmpty()) {
-            assertTrue(client.getOperator(report.assignedOperator()).autoAssign(),
-                "A pre-assigned report should only be assigned to an auto-assign operator");
+            assertTrue(client.getOperator(report.assignedOperator()).isAutoAssignReports(),
+                "A pre-assigned report should only be assigned to an operator opted in to ordinary reports");
         }
 
         String managerUuid = getSelfUuid(manager);

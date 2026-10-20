@@ -232,7 +232,10 @@ class EntitiesClientTest extends FederationClientTestBase {
         String entityA = createSecurityEntity();
         String entityB = createSecurityEntity();
 
-        client.setEntityRelationship(entityA, entityA, EntityRelationshipType.ALTERNATIVE);
+        // A relationship of an entity to itself is rejected and leaves the entity without a relationship
+        expectRequestFailure(() -> client.setEntityRelationship(entityA, entityA, EntityRelationshipType.ALTERNATIVE), 400);
+        assertNull(client.getEntityRecord(entityA).relationshipEntity());
+
         client.setEntityRelationship(entityA, entityB, EntityRelationshipType.PROXY);
         client.setEntityRelationship(entityB, entityA, EntityRelationshipType.PROXY);
 

@@ -140,6 +140,51 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
+    void testUploadFileAttachmentByUrlRejectsNonHttpUrl() {
+        assertThrows(IllegalArgumentException.class,
+            () -> client.uploadFileAttachmentByUrl(UUID.randomUUID().toString(), "file:///etc/passwd"));
+        assertThrows(IllegalArgumentException.class,
+            () -> client.uploadFileAttachmentByUrl(UUID.randomUUID().toString(), "not-a-valid-url"));
+    }
+
+    @Test
+    void testUploadFileAttachmentByUrlRejectsNonPublicAddresses() {
+        String entityUuid = client.pushEntity("url-private-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "url_private");
+        createdEntities.add(entityUuid);
+
+        String evidenceUuid = client.submitEvidence(entityUuid, "Test evidence for non-public URL attachment", "URL private test", "url_private");
+        createdEvidenceRecords.add(evidenceUuid);
+
+        List<String> urls = List.of(
+            "http://127.0.0.1/",
+            "http://localhost:7000/",
+            "http://10.0.0.1/",
+            "http://169.254.169.254/latest/meta-data/",
+            "http://[::1]/"
+        );
+
+        for (String url : urls) {
+            FederationClientException ex = assertThrows(FederationClientException.class,
+                () -> createdAttachments.add(client.uploadFileAttachmentByUrl(evidenceUuid, url).uuid()),
+                "URL upload from non-public address " + url + " should be rejected");
+            assertEquals(400, ex.getStatusCode(), "URL upload from " + url + " should be rejected with HTTP 400");
+        }
+    }
+
+    @Test
+    void testUploadFileAttachmentByUrlRejectsCredentials() {
+        String entityUuid = client.pushEntity("url-credentials-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "url_credentials");
+        createdEntities.add(entityUuid);
+
+        String evidenceUuid = client.submitEvidence(entityUuid, "Test evidence for URL with credentials", "URL credentials test", "url_credentials");
+        createdEvidenceRecords.add(evidenceUuid);
+
+        FederationClientException ex = assertThrows(FederationClientException.class,
+            () -> createdAttachments.add(client.uploadFileAttachmentByUrl(evidenceUuid, "http://user:password@example.com/file.txt").uuid()));
+        assertEquals(400, ex.getStatusCode());
+    }
+
+    @Test
     void testUploadFileAttachmentFromUrlFailsOnRemoteError() throws Exception {
         String entityUuid = client.pushEntity("url-error-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "url_error");
         createdEntities.add(entityUuid);
