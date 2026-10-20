@@ -1,10 +1,12 @@
 package net.nosial.jfederation.enums;
 
+import com.fasterxml.jackson.annotation.JsonEnumDefaultValue;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Categories of security incidents that can be attached to blacklist records and reports.
- * Each constant maps to the uppercase string value the server expects in JSON payloads.
+ * Categories of security incidents that can be attached to blacklist records and reports, and the concerns a
+ * content scan or entity query assesses. Each constant maps to the uppercase string value the server expects in JSON
+ * payloads. An incident type this client does not recognize is read as {@link #OTHER}, as OFD 2.0 requires.
  */
 public enum IncidentType
 {
@@ -14,6 +16,9 @@ public enum IncidentType
     ILLEGAL_CONTENT("ILLEGAL_CONTENT"),
     MALWARE("MALWARE"),
     PHISHING("PHISHING"),
+    ADVERTISING("ADVERTISING"),
+    TRACKING("TRACKING"),
+    @JsonEnumDefaultValue
     OTHER("OTHER");
 
     private final String value;
