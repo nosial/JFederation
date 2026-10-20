@@ -6,6 +6,7 @@ import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.cfg.EnumFeature;
 import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,10 @@ import org.slf4j.LoggerFactory;
  * Static utility providing access to a pre-configured Jackson {@link ObjectMapper} and common
  * read/write operations. The mapper is configured with snake-case property naming, non-null
  * serialization, lenient unknown-property handling, and automatic module registration.
+ *
+ * <p>Enum values this client does not recognize, which a minor version of the OFD specification may add, are read
+ * as the constant annotated with {@code @JsonEnumDefaultValue} (eg; {@code OTHER} for incident types) or as
+ * {@code null} otherwise, instead of failing.
  */
 public final class Json
 {
@@ -23,6 +28,7 @@ public final class Json
             .changeDefaultPropertyInclusion(incl -> incl.withValueInclusion(JsonInclude.Include.NON_NULL))
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, false)
+            .enable(EnumFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE, EnumFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL)
             .findAndAddModules()
             .build();
 
