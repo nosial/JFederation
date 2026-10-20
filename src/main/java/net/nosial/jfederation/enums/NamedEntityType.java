@@ -12,7 +12,8 @@ public enum NamedEntityType
     URL("url"),
     EMAIL("email"),
     IPv4("ipv4"),
-    IPv6("ipv6");
+    IPv6("ipv6"),
+    TELEPHONE("telephone");
 
     private final String value;
 
