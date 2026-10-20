@@ -23,10 +23,12 @@ class OperatorsClientTest extends FederationClientTestBase {
 
         OperatorRecord rec = client.getOperator(uuid);
         assertNotNull(rec);
-        assertFalse(rec.managementPermissions());
-        assertFalse(rec.operatorPermissions());
-        assertFalse(rec.clientPermissions());
-        assertFalse(rec.autoAssign());
+        assertFalse(rec.hasManagementPermissions());
+        assertFalse(rec.hasOperatorPermissions());
+        assertFalse(rec.hasClientPermissions());
+        assertFalse(rec.isAutoAssigned());
+        assertFalse(rec.isBot());
+        assertNotNull(rec.configuration(), "The configuration is disclosed to operators with operator permissions");
         assertNotNull(uuidCreated.accessToken());
     }
 
@@ -37,9 +39,9 @@ class OperatorsClientTest extends FederationClientTestBase {
         client.setManagementPermissions(uuid, true);
 
         OperatorRecord rec = client.getOperator(uuid);
-        assertTrue(rec.managementPermissions());
-        assertFalse(rec.operatorPermissions());
-        assertFalse(rec.clientPermissions());
+        assertTrue(rec.hasManagementPermissions());
+        assertFalse(rec.hasOperatorPermissions());
+        assertTrue(rec.hasClientPermissions(), "Management permissions inherit client permissions");
     }
 
     @Test
@@ -49,9 +51,9 @@ class OperatorsClientTest extends FederationClientTestBase {
         client.setOperatorPermissions(uuid, true);
 
         OperatorRecord rec = client.getOperator(uuid);
-        assertFalse(rec.managementPermissions());
-        assertTrue(rec.operatorPermissions());
-        assertFalse(rec.clientPermissions());
+        assertFalse(rec.hasManagementPermissions());
+        assertTrue(rec.hasOperatorPermissions());
+        assertFalse(rec.hasClientPermissions());
     }
 
     @Test
@@ -61,9 +63,9 @@ class OperatorsClientTest extends FederationClientTestBase {
         client.setClientPermissions(uuid, true);
 
         OperatorRecord rec = client.getOperator(uuid);
-        assertFalse(rec.managementPermissions());
-        assertFalse(rec.operatorPermissions());
-        assertTrue(rec.clientPermissions());
+        assertFalse(rec.hasManagementPermissions());
+        assertFalse(rec.hasOperatorPermissions());
+        assertTrue(rec.hasClientPermissions());
     }
 
     @Test
@@ -75,9 +77,9 @@ class OperatorsClientTest extends FederationClientTestBase {
         client.setClientPermissions(uuid, true);
 
         OperatorRecord rec = client.getOperator(uuid);
-        assertTrue(rec.managementPermissions());
-        assertTrue(rec.operatorPermissions());
-        assertTrue(rec.clientPermissions());
+        assertTrue(rec.hasManagementPermissions());
+        assertTrue(rec.hasOperatorPermissions());
+        assertTrue(rec.hasClientPermissions());
     }
 
     @Test
@@ -195,10 +197,10 @@ class OperatorsClientTest extends FederationClientTestBase {
 
         OperatorRecord op = client.getOperator(uuid);
         assertEquals(name, op.name());
-        assertFalse(op.managementPermissions());
-        assertFalse(op.operatorPermissions());
-        assertFalse(op.clientPermissions());
-        assertFalse(op.autoAssign());
+        assertFalse(op.hasManagementPermissions());
+        assertFalse(op.hasOperatorPermissions());
+        assertFalse(op.hasClientPermissions());
+        assertFalse(op.isAutoAssigned());
         assertFalse(op.disabled());
         assertNotNull(uuidCreated.accessToken());
 
@@ -207,13 +209,14 @@ class OperatorsClientTest extends FederationClientTestBase {
         client.setClientPermissions(uuid, true);
         client.setAutoAssign(uuid, true);
         OperatorRecord updated = client.getOperator(uuid);
-        assertTrue(updated.managementPermissions());
-        assertTrue(updated.operatorPermissions());
-        assertTrue(updated.clientPermissions());
-        assertTrue(updated.autoAssign());
+        assertTrue(updated.hasManagementPermissions());
+        assertTrue(updated.hasOperatorPermissions());
+        assertTrue(updated.hasClientPermissions());
+        assertTrue(updated.isAutoAssignReports());
+        assertTrue(updated.isAutoAssignAutomatedReports());
 
         client.setAutoAssign(uuid, false);
-        assertFalse(client.getOperator(uuid).autoAssign());
+        assertFalse(client.getOperator(uuid).isAutoAssigned());
 
         client.disableOperator(uuid);
         assertTrue(client.getOperator(uuid).disabled());
@@ -311,19 +314,22 @@ class OperatorsClientTest extends FederationClientTestBase {
         createdOperators.add(uuid);
 
         client.setManagementPermissions(uuid, true);
-        assertTrue(client.getOperator(uuid).managementPermissions());
+        assertTrue(client.getOperator(uuid).hasManagementPermissions());
         client.setManagementPermissions(uuid, false);
-        assertFalse(client.getOperator(uuid).managementPermissions());
+        assertFalse(client.getOperator(uuid).hasManagementPermissions());
+        // Revoking management permissions leaves the inherited client permissions in place
+        assertTrue(client.getOperator(uuid).hasClientPermissions());
+        client.setClientPermissions(uuid, false);
 
         client.setOperatorPermissions(uuid, true);
-        assertTrue(client.getOperator(uuid).operatorPermissions());
+        assertTrue(client.getOperator(uuid).hasOperatorPermissions());
         client.setOperatorPermissions(uuid, false);
-        assertFalse(client.getOperator(uuid).operatorPermissions());
+        assertFalse(client.getOperator(uuid).hasOperatorPermissions());
 
         client.setClientPermissions(uuid, true);
-        assertTrue(client.getOperator(uuid).clientPermissions());
+        assertTrue(client.getOperator(uuid).hasClientPermissions());
         client.setClientPermissions(uuid, false);
-        assertFalse(client.getOperator(uuid).clientPermissions());
+        assertFalse(client.getOperator(uuid).hasClientPermissions());
     }
 
     @Test
@@ -331,13 +337,15 @@ class OperatorsClientTest extends FederationClientTestBase {
         String uuid = client.createOperator("auto_assign_test_" + randomUuid().substring(0, 8)).uuid();
         createdOperators.add(uuid);
 
-        assertFalse(client.getOperator(uuid).autoAssign());
+        assertFalse(client.getOperator(uuid).isAutoAssigned());
 
         client.setAutoAssign(uuid, true);
-        assertTrue(client.getOperator(uuid).autoAssign());
+        OperatorRecord assigned = client.getOperator(uuid);
+        assertTrue(assigned.isAutoAssignReports());
+        assertTrue(assigned.isAutoAssignAutomatedReports());
 
         client.setAutoAssign(uuid, false);
-        assertFalse(client.getOperator(uuid).autoAssign());
+        assertFalse(client.getOperator(uuid).isAutoAssigned());
     }
 
     @Test
@@ -419,9 +427,9 @@ class OperatorsClientTest extends FederationClientTestBase {
         FederationClient master = track(new FederationClient(serverEndpoint, serverAccessToken));
         OperatorRecord root = master.getSelf();
         assertEquals("root", root.name());
-        assertTrue(root.managementPermissions());
-        assertTrue(root.operatorPermissions());
-        assertTrue(root.clientPermissions());
+        assertTrue(root.hasManagementPermissions());
+        assertTrue(root.hasOperatorPermissions());
+        assertTrue(root.hasClientPermissions());
         assertFalse(root.disabled());
         master.close();
     }
