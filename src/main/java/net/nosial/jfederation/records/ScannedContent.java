@@ -19,7 +19,9 @@ import java.util.Map;
  * @param riskScore the computed risk score for the scanned content
  * @param suggestedAction the recommended action based on the risk score
  * @param suggestedLiftTimestamp when the suggested temporary block should be automatically lifted (Unix epoch seconds)
- * @param scanResults a map of individual scanner names to their risk scores
+ * @param scanResults host-defined information about the factors contributing to the result, clients must not rely on
+ *                    particular names or values
+ * @param detections the detections the host made with respect to the concerns of the scan, empty when it made none
  */
 public record ScannedContent(
     @JsonProperty("resolved_entities") List<JsonNode> resolvedEntityNodes,
@@ -28,8 +30,17 @@ public record ScannedContent(
     @JsonProperty("risk_score") double riskScore,
     @JsonProperty("suggested_action") SuggestedAction suggestedAction,
     @JsonProperty("suggested_lift_timestamp") Integer suggestedLiftTimestamp,
-    @JsonProperty("scan_results") Map<String, Double> scanResults
+    @JsonProperty("scan_results") Map<String, Double> scanResults,
+    @JsonProperty("detections") List<Detection> detections
 ) {
+    /**
+     * Compact constructor, a server that reports no detections made none.
+     */
+    public ScannedContent
+    {
+        detections = detections == null ? List.of() : List.copyOf(detections);
+    }
+
     /**
      * Deserializes and returns the resolved entities found in the scanned content.
      *
