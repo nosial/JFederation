@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-20
+
+This update follows version `2.0` of the OFD Specification and FederationLib 2.0.0, it is not compatible with servers
+implementing OFD 1.x.
+
+### Breaking
+ - `OperatorRecord` carries its permission groups in `permissions()` (`OperatorPermissions`: `client`, `management`,
+   `operator`) and its settings in `configuration()` (`OperatorConfiguration`: `autoAssignReports`,
+   `autoAssignAutomatedReports`, `isBot`), replacing `clientPermissions()`, `managementPermissions()`,
+   `operatorPermissions()` and `autoAssign()`. `hasClientPermissions()`, `hasManagementPermissions()`,
+   `hasOperatorPermissions()`, `isAutoAssignReports()`, `isAutoAssignAutomatedReports()`, `isAutoAssigned()` and
+   `isBot()` are convenience accessors. `configuration()` is null when the server does not disclose it, which it only
+   does to the operator itself and to operators with operator permissions
+ - `setOperatorPermissions()`, `setClientPermissions()` and `setManagementPermissions()` use
+   `PATCH /operators/{uuid}/permissions`, and `setAutoAssign()` uses `PATCH /operators/{uuid}/configuration` and opts
+   in to (or out of) both ordinary and automated reports. Management permissions inherit client permissions, so
+   revoking client permissions from an operator that keeps management permissions is rejected with HTTP 409
+ - The `ContentInput`, `EvidenceRecord`, `AuditLog`, `EntityRecord`, `ScannedContent` and `ServerInformation` records
+   have new components, code calling their canonical constructors must pass them; the existing convenience
+   constructors of `ContentInput` are unchanged
+ - Ordering values for `by` are sent uppercase (e.g. `CREATED`) as OFD 2.0 defines, instead of lowercase
+ - Search queries must contain at least 2 non-whitespace characters, a query of whitespace is rejected client-side
+
+### Added
+ - `updateOperatorPermissions(uuid, client, management, operator)` and
+   `updateOperatorConfiguration(uuid, autoAssignReports, autoAssignAutomatedReports, isBot)`, which take partial
+   updates (`null` leaves a member unchanged) and return the updated object, and `setBot(uuid, isBot)`
+ - Content types: `ContentType` (`TEXT`, `EMAIL`, `SMS`, `WEB_PAGE`, `HOSTNAME`, `URL`), the `contentType` and
+   `context` components of `ContentInput` with the `ContentInput(text, contentType)` and
+   `ContentInput(text, contentType, context)` constructors, a `submitEvidence()` overload taking both, and the
+   `contentType()` and `getContext()` of `EvidenceRecord`
+ - Concerns: `scanContent(..., concerns)` and `queryEntity(identifier, concerns)` assess only the given incident types
+ - `ScannedContent.detections()` and the `Detection` record (concern, content index, entity, source, confidence and
+   whether it is verified)
+ - `ADVERTISING` and `TRACKING` incident types, and the `TELEPHONE` named entity type
+ - `listBlacklistRecords(..., types)` and `searchBlacklist(..., types)` filter blacklist records by incident type
+ - `blacklistEntity(identifier, type)` and `blacklistEntity(identifier, type, expires)`, a blacklist record no
+   longer requires a supporting report, and the report may concern another entity
+ - `EvidenceRecord.automated()`: evidence created by the server or submitted by a bot operator is automated and
+   created confidential; the `AUTOMATED` and `NOT_AUTOMATED` evidence categories
+ - `AuditLog.reportUuid()`, the report an audit log entry refers to
+ - `EntityRecord.hash()`, the SHA-256 identifier of the entity, and `EntityRecord.isTelephone()`
+ - `ServerInformation` members `publicTelephoneEntities`, `collectsPublicScanContent`, `allowUrlUploads`,
+   `scanContentTypes`, `concerns` and `defaultConcerns`, with `isUrlUploadsAllowed()`,
+   `isScanContentTypeSupported()` and `getApiMajorVersion()`
+ - `uploadFileAttachmentByUrl(evidenceUuid, fileUrl)` to upload an attachment by URL, the server retrieves the file
+   from the URL itself. The existing `uploadFileAttachmentFromUrl` still downloads the file locally and uploads it.
+   Only use it with a server that publishes `allow_url_uploads` as true
+ - Test units for the records and enums of OFD 2.0 (`Ofd2RecordsTest`, without a server) and their client to server
+   behavior (`Ofd2ClientTest`)
+
+### Changed
+ - Entity identifiers are percent-encoded in request paths, so entity addresses containing `+`, `%`, `#` or other
+   reserved characters reach the server unchanged
+ - Values a server publishes that this client does not recognize, which a minor version of OFD may add, are
+   tolerated: an unrecognized incident type or audit log type is read as `OTHER`, other unrecognized values are read
+   as `null` and left out of lists
+ - `FileAttachmentRecord.evidenceUuid()` is null instead of an empty string when the server reports no associated
+   evidence record
+ - Tests follow the behavior of FederationLib 2.0.0: management permissions grant client permissions, and a
+   relationship of an entity to itself is rejected with HTTP 400
+ - Updated Jackson to 3.2.4 and Logback to 1.6.5
+
+
+
 ## [1.0.13] - 2026-10-06
 
 Jitpack fix
