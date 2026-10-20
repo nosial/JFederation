@@ -1,5 +1,6 @@
 package net.nosial.jfederation.enums;
 
+import com.fasterxml.jackson.annotation.JsonEnumDefaultValue;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
@@ -30,6 +31,7 @@ public enum AuditLogType
     BLACKLIST_DELETED("BLACKLIST_DELETED"),
     BLACKLIST_LIFTED("BLACKLIST_LIFTED"),
     BLACKLIST_EXTENDED("BLACKLIST_EXTENDED"),
+    @JsonEnumDefaultValue
     OTHER("OTHER");
 
     private final String value;
