@@ -1,12 +1,14 @@
 package net.nosial.jfederation;
 
-import tools.jackson.databind.JsonNode;
 import net.nosial.jfederation.classes.Json;
+import net.nosial.jfederation.enums.ContentType;
+import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.enums.RecordType;
 import net.nosial.jfederation.records.ServerInformation;
+import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 import java.util.List;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -183,5 +185,77 @@ class ServerInformationTest extends FederationClientTestBase {
 
         assertNotNull(client.getEntityRecord(entityUuid));
         assertNotNull(client.getEvidenceRecord(evidenceUuid));
+    }
+
+    @Test
+    void testServerImplementsOfd2() {
+        ServerInformation info = client.getServerInformation();
+
+        assertEquals(2, info.getApiMajorVersion(), "The server should implement OFD 2.x, reported " + info.apiVersion());
+        assertTrue(info.scanContentTypes().contains(ContentType.TEXT));
+        assertEquals(List.of(ContentType.values()), info.scanContentTypes(), "Every content type is interpreted by scanning");
+        assertTrue(info.concerns().containsAll(List.of(IncidentType.values())), "Every incident type can be assessed by default");
+        assertTrue(info.concerns().containsAll(info.defaultConcerns()), "The default concerns are a subset of the concerns");
+        assertFalse(info.defaultConcerns().contains(IncidentType.ADVERTISING));
+        assertFalse(info.defaultConcerns().contains(IncidentType.TRACKING));
+        assertTrue(info.isUrlUploadsAllowed(), "URL uploads are enabled by default");
+        assertNotNull(info.collectsPublicScanContent());
+    }
+
+    @Test
+    void testServerInformationDeserializesOfd2Members() {
+        ServerInformation info = Json.readValue("""
+            {
+              "name": "OFD 2.0 Server",
+              "api_version": "2.0",
+              "public_telephone_entities": false,
+              "collects_public_scan_content": true,
+              "allow_url_uploads": true,
+              "scan_content_types": ["TEXT", "EMAIL", "SMS", "WEB_PAGE", "HOSTNAME", "URL"],
+              "concerns": ["SPAM", "SCAM", "ADVERTISING", "TRACKING", "OTHER"],
+              "default_concerns": ["SPAM", "SCAM", "OTHER"]
+            }
+            """, ServerInformation.class);
+
+        assertEquals(2, info.getApiMajorVersion());
+        assertFalse(info.publicTelephoneEntities());
+        assertEquals(Boolean.TRUE, info.collectsPublicScanContent());
+        assertTrue(info.isUrlUploadsAllowed());
+        assertEquals(List.of(ContentType.values()), info.scanContentTypes());
+        assertTrue(info.isScanContentTypeSupported(ContentType.WEB_PAGE));
+        assertEquals(List.of(IncidentType.SPAM, IncidentType.SCAM, IncidentType.ADVERTISING, IncidentType.TRACKING, IncidentType.OTHER), info.concerns());
+        assertEquals(List.of(IncidentType.SPAM, IncidentType.SCAM, IncidentType.OTHER), info.defaultConcerns());
+    }
+
+    @Test
+    void testServerInformationDefaultsForMembersNotPublished() {
+        ServerInformation info = Json.readValue("{\"name\": \"Legacy Server\", \"api_version\": \"1.0\"}", ServerInformation.class);
+
+        assertEquals(1, info.getApiMajorVersion());
+        assertNull(info.allowUrlUploads());
+        assertFalse(info.isUrlUploadsAllowed(), "A server that does not publish allow_url_uploads does not accept URL uploads");
+        assertNull(info.collectsPublicScanContent());
+        assertEquals(List.of(ContentType.TEXT), info.scanContentTypes(), "Content scanning always interprets TEXT");
+        assertEquals(List.of(), info.concerns());
+        assertEquals(List.of(), info.defaultConcerns());
+        assertEquals(List.of(), info.searchTypes());
+
+        assertEquals(-1, Json.readValue("{\"api_version\": \"unknown\"}", ServerInformation.class).getApiMajorVersion());
+    }
+
+    @Test
+    void testServerInformationToleratesUnrecognizedValues() {
+        ServerInformation info = Json.readValue("""
+            {
+              "scan_content_types": ["EMAIL", "VOICEMAIL"],
+              "concerns": ["SPAM", "CRYPTOJACKING"],
+              "search_types": ["ENTITY", "FUTURE_RECORD"]
+            }
+            """, ServerInformation.class);
+
+        assertEquals(List.of(ContentType.TEXT, ContentType.EMAIL), info.scanContentTypes());
+        assertEquals(List.of(RecordType.ENTITY), info.searchTypes());
+        // An unrecognized incident type is read as OTHER
+        assertEquals(List.of(IncidentType.SPAM, IncidentType.OTHER), info.concerns());
     }
 }

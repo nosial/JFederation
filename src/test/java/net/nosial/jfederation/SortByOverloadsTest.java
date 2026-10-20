@@ -289,4 +289,12 @@ class SortByOverloadsTest extends FederationClientTestBase {
         List<BlacklistRecord> lifted = client.searchBlacklist(host, 1, 50, "LIFTED", "created");
         assertFalse(lifted.stream().anyMatch(bl -> blacklistUuid.equals(bl.uuid())));
     }
+
+    @Test
+    void testSortValuesAreSentUppercase() {
+        // OFD 2.0 defines uppercase ordering values, the client uppercases what it is given
+        List<OperatorRecord> lowercase = client.listOperators(1, 10, null, "created", "asc");
+        List<OperatorRecord> uppercase = client.listOperators(1, 10, null, "CREATED", "ASC");
+        assertEquals(uppercase.stream().map(OperatorRecord::uuid).toList(), lowercase.stream().map(OperatorRecord::uuid).toList());
+    }
 }

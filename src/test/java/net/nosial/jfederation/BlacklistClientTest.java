@@ -346,4 +346,48 @@ class BlacklistClientTest extends FederationClientTestBase {
 
         assertEquals(1, client.listEntityBlacklistRecords(entityUuid).size());
     }
+
+    @Test
+    void testBlacklistWithoutReportAndWithReportAboutAnotherEntity() {
+        String entityA = createSecurityEntity();
+        String entityB = createSecurityEntity();
+
+        String withoutReport = client.blacklistEntity(entityA, IncidentType.SPAM, (int) (System.currentTimeMillis() / 1000 + 3600));
+        createdBlacklistRecords.add(withoutReport);
+        assertNull(client.getBlacklistRecord(withoutReport).reportUuid());
+
+        String reportForB = createReportForEntity(entityB);
+        String withOtherReport = client.blacklistEntity(entityA, reportForB, IncidentType.SPAM);
+        createdBlacklistRecords.add(withOtherReport);
+        BlacklistRecord record = client.getBlacklistRecord(withOtherReport);
+        assertEquals(entityA, record.entityUuid());
+        assertEquals(reportForB, record.reportUuid());
+    }
+
+    @Test
+    void testBlacklistTypeFilters() {
+        String entityUuid = createSecurityEntity();
+        String advertising = client.blacklistEntity(entityUuid, IncidentType.ADVERTISING);
+        String tracking = client.blacklistEntity(entityUuid, IncidentType.TRACKING);
+        String spam = client.blacklistEntity(entityUuid, IncidentType.SPAM);
+        createdBlacklistRecords.addAll(List.of(advertising, tracking, spam));
+
+        List<String> listed = client.listBlacklistRecords(1, 100, false, null, null, null, List.of(IncidentType.ADVERTISING, IncidentType.TRACKING))
+            .stream().map(BlacklistRecord::uuid).toList();
+        assertTrue(listed.containsAll(List.of(advertising, tracking)));
+        assertFalse(listed.contains(spam));
+
+        List<BlacklistRecord> searched = client.searchBlacklist(entityUuid, 1, 50, null, null, null, List.of(IncidentType.ADVERTISING));
+        List<String> searchedUuids = searched.stream().map(BlacklistRecord::uuid).toList();
+        assertTrue(searchedUuids.contains(advertising));
+        assertFalse(searchedUuids.contains(tracking));
+        assertFalse(searchedUuids.contains(spam));
+        assertTrue(searched.stream().allMatch(record -> record.type() == IncidentType.ADVERTISING));
+    }
+
+    @Test
+    void testBlacklistEntityArgumentsAreValidatedClientSide() {
+        assertThrows(IllegalArgumentException.class, () -> client.blacklistEntity("example.com", "", IncidentType.SPAM, null));
+        assertThrows(NullPointerException.class, () -> client.blacklistEntity("example.com", (IncidentType) null));
+    }
 }

@@ -217,15 +217,10 @@ class SearchTest extends FederationClientTestBase {
 
     @Test
     void testSearchWhitespaceQuery() {
-        try {
-            List<EntityRecord> results = client.searchEntities("  ", 1, 10);
-            assertTrue(results == null || results.isEmpty(), "Expected empty results for whitespace query");
-        } catch (IllegalArgumentException e) {
-            // expected
-        } catch (FederationClientException e) {
-            assertTrue(e.getStatusCode() == 400 || e.getStatusCode() == 422,
-                "Server should reject whitespace-only search query");
-        }
+        // Search queries need at least two non-whitespace characters, which is checked client-side
+        assertThrows(IllegalArgumentException.class, () -> client.searchEntities("  ", 1, 10));
+        assertThrows(IllegalArgumentException.class, () -> client.searchEntities(" a ", 1, 10));
+        assertThrows(IllegalArgumentException.class, () -> client.searchBlacklist(null, 1, 10));
     }
 
     @Test

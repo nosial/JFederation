@@ -1,15 +1,19 @@
 package net.nosial.jfederation;
 
+import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.ClassificationFlag;
+import net.nosial.jfederation.enums.ContentType;
 import net.nosial.jfederation.enums.EntityRelationshipType;
 import net.nosial.jfederation.enums.IncidentType;
+import net.nosial.jfederation.enums.NamedEntityType;
 import net.nosial.jfederation.enums.SuggestedAction;
 import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.*;
+import net.nosial.jfederation.records.OperatorCreated;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import net.nosial.jfederation.records.OperatorCreated;
+import tools.jackson.databind.JsonNode;
 
 import java.util.HashMap;
 import java.util.List;
@@ -703,5 +707,124 @@ class ContentScanTest extends FederationClientTestBase {
         assertTrue(spec.has("info"));
         assertTrue(spec.has("paths"));
         assertTrue(spec.get("paths").has("/scan"));
+    }
+
+    @Test
+    void testScanContentWithConcernsAndContentTypes() {
+        ServerInformation info = client.getServerInformation();
+        IncidentType concern = info.defaultConcerns().getFirst();
+
+        ScannedContent scanned = client.scanContent(new ContentInput("Hello, how are you today?"), null, null, null, List.of(concern));
+        assertNotNull(scanned.detections());
+        for (Detection detection : scanned.detections()) {
+            assertSame(concern, detection.concern(), "Detections only relate to the requested concerns");
+        }
+
+        List<ContentInput> inputs = List.of(
+            new ContentInput("Meeting moved to 3pm"),
+            new ContentInput("example.com", ContentType.HOSTNAME, Map.of("query_type", "A")),
+            new ContentInput("https://example.com/page", ContentType.URL)
+        );
+        ScannedContent multiple = client.scanContent(inputs, null, null, null, null);
+        for (Detection detection : multiple.detections()) {
+            assertTrue(detection.contentIndex() >= 0 && detection.contentIndex() < inputs.size());
+        }
+    }
+
+    @Test
+    void testScanContentRejectsInvalidTypedContent() {
+        expectRequestFailure(() -> client.scanContent(new ContentInput("not a hostname!", ContentType.HOSTNAME)), 400);
+        expectRequestFailure(() -> client.scanContent(new ContentInput("not/an absolute url", ContentType.URL)), 400);
+        expectRequestFailure(() -> client.scanContent(new ContentInput("Page text", ContentType.WEB_PAGE, Map.of("title", "No URL"))), 400);
+    }
+
+    @Test
+    void testDetectionForBlacklistOfRequestedConcernOnly() {
+        String host = "ofd2-detect-" + UUID.randomUUID().toString().substring(0, 8) + ".com";
+        String entityUuid = client.pushEntity(host);
+        createdEntities.add(entityUuid);
+        String blacklistUuid = client.blacklistEntity(entityUuid, IncidentType.MALWARE);
+        createdBlacklistRecords.add(blacklistUuid);
+
+        ScannedContent malware = client.scanContent(new ContentInput("Download it from https://" + host + "/file"), null, null, null, List.of(IncidentType.MALWARE));
+        assertTrue(malware.detections().stream().anyMatch(d -> d.concern() == IncidentType.MALWARE),
+            "An active blacklist record of a requested concern is a detection");
+
+        ScannedContent spam = client.scanContent(new ContentInput("Download it from https://" + host + "/file"), null, null, null, List.of(IncidentType.SPAM));
+        assertTrue(spam.detections().stream().noneMatch(d -> d.concern() == IncidentType.MALWARE),
+            "Concerns that were not requested make no detections");
+    }
+
+    @Test
+    void testScanResolvesTelephoneNumbers() {
+        String number = uniqueTelephoneNumber();
+        String written = "+1 " + number.substring(1, 4) + "-" + number.substring(4, 7) + "-" + number.substring(7);
+
+        // Scanning resolves mentions against the entity registry, so the number must be registered first
+        String entityUuid = client.pushEntity(EntityRecord.TELEPHONE_ENTITY_HOST, number);
+        createdEntities.add(entityUuid);
+
+        ScannedContent scanned = client.scanContent("Call me at " + written + " for the prize");
+        ResolvedEntity telephone = scanned.getResolvedEntities().stream()
+            .filter(entity -> entity.getEntity().isTelephone())
+            .findFirst().orElseThrow(() -> new AssertionError("The number should be resolved as a telephone entity"));
+
+        assertEquals(entityUuid, telephone.getEntity().uuid());
+        assertEquals(number, telephone.getEntity().id());
+        assertSame(NamedEntityType.TELEPHONE, telephone.getEntityPosition().type());
+    }
+
+    @Test
+    void testScannedContentDeserializesDetections() {
+        ScannedContent scanned = Json.readValue("""
+            {
+              "resolved_entities": [], "author_entity": null, "classification": null,
+              "risk_score": 75.0, "suggested_action": "BLOCK_CONTENT", "suggested_lift_timestamp": null,
+              "scan_results": {},
+              "detections": [
+                {"concern": "SPAM", "content_index": 1, "entity": "n", "source": "blacklist", "confidence": null, "verified": true},
+                {"concern": "TRACKING", "content_index": 0, "entity": null, "source": "filter_list", "confidence": 0.5, "verified": false}
+              ]
+            }
+            """, ScannedContent.class);
+
+        assertEquals(2, scanned.detections().size());
+        Detection first = scanned.detections().getFirst();
+        assertSame(IncidentType.SPAM, first.concern());
+        assertEquals(1, first.contentIndex());
+        assertEquals("n", first.entity());
+        assertEquals("blacklist", first.source());
+        assertNull(first.confidence());
+        assertTrue(first.verified());
+
+        Detection second = scanned.detections().get(1);
+        assertNull(second.entity());
+        assertEquals(0.5, second.confidence());
+        assertFalse(second.verified());
+
+        assertEquals(List.of(), Json.readValue("{\"risk_score\": 50}", ScannedContent.class).detections());
+    }
+
+    @Test
+    void testContentInputSerialization() {
+        JsonNode text = Json.readTree(Json.writeValueAsString(new ContentInput("Hello")));
+        assertEquals("Hello", text.get("text_content").asString());
+        assertFalse(text.has("content_type"), "The default content type is not sent");
+        assertFalse(text.has("context"));
+
+        // TEXT given explicitly is not sent either
+        assertFalse(Json.readTree(Json.writeValueAsString(new ContentInput("Hello", ContentType.TEXT))).has("content_type"));
+        assertSame(ContentType.TEXT, new ContentInput("Hello", ContentType.TEXT).effectiveContentType());
+
+        JsonNode email = Json.readTree(Json.writeValueAsString(new ContentInput("Body", ContentType.EMAIL,
+            Map.of("subject", "Invoice", "sender", "billing@example.com"))));
+        assertEquals("EMAIL", email.get("content_type").asString());
+        assertEquals("Invoice", email.get("context").get("subject").asString());
+        assertEquals("billing@example.com", email.get("context").get("sender").asString());
+    }
+
+    @Test
+    void testScanContentRejectsEmptyConcerns() {
+        assertThrows(IllegalArgumentException.class, () -> client.scanContent(new ContentInput("text"), null, null, null, List.of()));
     }
 }

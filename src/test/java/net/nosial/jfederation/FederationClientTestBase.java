@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -115,6 +116,18 @@ public abstract class FederationClientTestBase {
 
     protected FederationClient createLimitedOperator(String namePrefix, boolean clientPerm) {
         return createLimitedOperator(namePrefix, false, false, clientPerm);
+    }
+
+    /**
+     * Generates a valid, unassigned North American telephone number in canonical form (eg; 16502530000).
+     */
+    protected static String uniqueTelephoneNumber() {
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        int exchange;
+        do {
+            exchange = random.nextInt(2, 9) * 100 + random.nextInt(20, 100);
+        } while (exchange == 555);
+        return "1650" + exchange + String.format("%04d", random.nextInt(0, 10000));
     }
 
     protected String createSecurityEntity() {

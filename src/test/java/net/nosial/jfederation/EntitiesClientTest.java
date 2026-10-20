@@ -1,10 +1,11 @@
 package net.nosial.jfederation;
 
+import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.EntityRelationshipType;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
-import net.nosial.jfederation.records.EntityRecord;
 import net.nosial.jfederation.records.EntityQueryResult;
+import net.nosial.jfederation.records.EntityRecord;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.ServerInformation;
 import org.junit.jupiter.api.Test;
@@ -519,5 +520,55 @@ class EntitiesClientTest extends FederationClientTestBase {
     void testSetEntityWhitelistValidation() {
         assertThrows(IllegalArgumentException.class, () -> client.setEntityWhitelist("", true));
         assertThrows(IllegalArgumentException.class, () -> client.setEntityWhitelist(null, false));
+    }
+
+    @Test
+    void testEntityAddressesArePercentEncodedInPaths() {
+        String host = "ofd2-encode-" + UUID.randomUUID().toString().substring(0, 8) + ".com";
+
+        // '%' and '+' are permitted in a local part, and would be misread if sent unencoded in a path
+        for (String id : List.of("user+tag", "user%41b")) {
+            String entityUuid = client.pushEntity(host, id);
+            createdEntities.add(entityUuid);
+
+            EntityRecord record = client.getEntityRecord(id + "@" + host);
+            assertEquals(entityUuid, record.uuid());
+            assertEquals(id, record.id());
+            assertEquals(entityUuid, client.queryEntity(id + "@" + host).entityRecord().uuid());
+            assertNotNull(client.listEntityAuditLogs(id + "@" + host, 1, 10));
+        }
+    }
+
+    @Test
+    void testTelephoneEntitiesAreHiddenFromUnauthenticatedRequests() {
+        String number = uniqueTelephoneNumber();
+        String entityUuid = client.pushEntity(EntityRecord.TELEPHONE_ENTITY_HOST, number);
+        createdEntities.add(entityUuid);
+
+        EntityRecord record = client.getEntityRecord(number + "@" + EntityRecord.TELEPHONE_ENTITY_HOST);
+        assertEquals(entityUuid, record.uuid());
+        assertTrue(record.isTelephone());
+
+        // Unless telephone entities are public, an unauthenticated request can't resolve one by UUID, only by its number
+        FederationClient anonymous = createAnonymousClient();
+        if (!client.getServerInformation().publicTelephoneEntities()) {
+            expectRequestFailure(() -> anonymous.getEntityRecord(entityUuid), 404);
+        }
+        assertEquals(entityUuid, anonymous.getEntityRecord(number + "@" + EntityRecord.TELEPHONE_ENTITY_HOST).uuid());
+
+        // Evidence about a telephone entity is always confidential
+        String evidenceUuid = client.submitEvidence(entityUuid, "A private text message", null, null, false);
+        createdEvidenceRecords.add(evidenceUuid);
+        assertTrue(client.getEvidenceRecord(evidenceUuid).confidential());
+    }
+
+    @Test
+    void testEntityRecordTelephoneAndHash() {
+        EntityRecord telephone = Json.readValue("{\"uuid\": \"t\", \"hash\": \"abc\", \"host\": \"e164.arpa\", \"id\": \"16502530000\"}", EntityRecord.class);
+        assertTrue(telephone.isTelephone());
+        assertEquals("abc", telephone.hash());
+
+        assertFalse(Json.readValue("{\"uuid\": \"d\", \"host\": \"e164.arpa\"}", EntityRecord.class).isTelephone());
+        assertFalse(Json.readValue("{\"uuid\": \"d\", \"host\": \"example.com\", \"id\": \"user\"}", EntityRecord.class).isTelephone());
     }
 }

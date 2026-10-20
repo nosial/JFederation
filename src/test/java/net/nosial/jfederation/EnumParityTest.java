@@ -8,6 +8,8 @@ import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.enums.NamedEntityType;
 import net.nosial.jfederation.enums.RecordType;
 import net.nosial.jfederation.enums.SuggestedAction;
+import net.nosial.jfederation.records.BlacklistRecord;
+import net.nosial.jfederation.records.ResolvedEntityPosition;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -62,5 +64,20 @@ class EnumParityTest {
         for (RecordType type : RecordType.values()) {
             assertSame(type, Json.readValue("\"" + type.getValue() + "\"", RecordType.class));
         }
+    }
+
+    @Test
+    void testUnrecognizedEnumValues() {
+        assertSame(IncidentType.OTHER, Json.readValue("\"CRYPTOJACKING\"", IncidentType.class));
+        assertSame(AuditLogType.OTHER, Json.readValue("\"FUTURE_EVENT\"", AuditLogType.class));
+        assertSame(IncidentType.ADVERTISING, Json.readValue("\"ADVERTISING\"", IncidentType.class));
+        assertSame(IncidentType.TRACKING, Json.readValue("\"TRACKING\"", IncidentType.class));
+        assertSame(NamedEntityType.TELEPHONE, Json.readValue("\"telephone\"", NamedEntityType.class));
+
+        BlacklistRecord blacklist = Json.readValue("{\"uuid\": \"b\", \"type\": \"FUTURE_TYPE\"}", BlacklistRecord.class);
+        assertSame(IncidentType.OTHER, blacklist.type());
+
+        ResolvedEntityPosition position = Json.readValue("{\"offset\": 1, \"length\": 2, \"type\": \"future\"}", ResolvedEntityPosition.class);
+        assertNull(position.type());
     }
 }

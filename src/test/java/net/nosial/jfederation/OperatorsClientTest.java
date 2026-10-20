@@ -1,10 +1,13 @@
 package net.nosial.jfederation;
 
+import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
+import net.nosial.jfederation.records.OperatorConfiguration;
+import net.nosial.jfederation.records.OperatorCreated;
+import net.nosial.jfederation.records.OperatorPermissions;
 import net.nosial.jfederation.records.OperatorRecord;
 import org.junit.jupiter.api.Test;
-import net.nosial.jfederation.records.OperatorCreated;
 
 import java.util.List;
 import java.util.UUID;
@@ -12,6 +15,12 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class OperatorsClientTest extends FederationClientTestBase {
+
+    private String createOperatorUuid(String prefix) {
+        String uuid = client.createOperator(prefix + "_" + UUID.randomUUID().toString().substring(0, 5)).uuid();
+        createdOperators.add(uuid);
+        return uuid;
+    }
 
     @Test
     void testCreateOperatorNoPermissions() {
@@ -595,5 +604,141 @@ class OperatorsClientTest extends FederationClientTestBase {
         client.setClientPermissions(uuid, true);
         clientA.close();
         clientB.close();
+    }
+
+    @Test
+    void testUpdateOperatorPermissionsReturnsTheUpdatedPermissions() {
+        String uuid = createOperatorUuid("ofd2_perms");
+
+        OperatorPermissions permissions = client.updateOperatorPermissions(uuid, null, true, null);
+        assertEquals(new OperatorPermissions(true, true, false), permissions, "Management permissions inherit client permissions");
+
+        // Groups given as null are left unchanged
+        permissions = client.updateOperatorPermissions(uuid, null, null, true);
+        assertEquals(new OperatorPermissions(true, true, true), permissions);
+        assertEquals(permissions, client.getOperator(uuid).permissions());
+
+        // Revoking both at once is not a conflict
+        assertEquals(new OperatorPermissions(false, false, true), client.updateOperatorPermissions(uuid, false, false, null));
+    }
+
+    @Test
+    void testRevokingClientPermissionsFromManagerConflicts() {
+        String uuid = createOperatorUuid("ofd2_conflict");
+        client.setManagementPermissions(uuid, true);
+
+        expectRequestFailure(() -> client.updateOperatorPermissions(uuid, false, null, null), 409);
+        expectRequestFailure(() -> client.setClientPermissions(uuid, false), 409);
+        assertTrue(client.getOperator(uuid).hasManagementPermissions(), "A rejected update leaves the permissions unchanged");
+    }
+
+    @Test
+    void testUpdatePermissionsRequiresOperatorPermissions() {
+        String target = createOperatorUuid("ofd2_perm_target");
+        FederationClient manager = createLimitedOperator("ofd2_perm_mgr", true, false, true);
+
+        expectRequestFailure(() -> manager.updateOperatorPermissions(target, true, null, null), 403);
+        expectRequestFailure(() -> createAnonymousClient().updateOperatorPermissions(target, true, null, null), new int[]{401, 403});
+    }
+
+    @Test
+    void testUpdateOperatorConfigurationLeavesUnsuppliedSettingsUnchanged() {
+        String uuid = createOperatorUuid("ofd2_config");
+
+        OperatorConfiguration configuration = client.updateOperatorConfiguration(uuid, true, null, null);
+        assertEquals(new OperatorConfiguration(true, false, false), configuration);
+
+        configuration = client.updateOperatorConfiguration(uuid, null, true, null);
+        assertEquals(new OperatorConfiguration(true, true, false), configuration);
+        assertEquals(configuration, client.getOperator(uuid).configuration());
+
+        client.setAutoAssign(uuid, false);
+        assertEquals(new OperatorConfiguration(false, false, false), client.getOperator(uuid).configuration());
+    }
+
+    @Test
+    void testOperatorChangesItsOwnConfiguration() {
+        FederationClient self = createLimitedOperator("ofd2_self_config", false, false, true);
+        String selfUuid = self.getSelf().uuid();
+
+        assertEquals(new OperatorConfiguration(true, false, false), self.updateOperatorConfiguration(selfUuid, true, null, null));
+        assertNotNull(self.getSelf().configuration(), "An operator receives its own configuration");
+
+        // Changing the configuration of another operator requires operator permissions
+        String other = createOperatorUuid("ofd2_other_config");
+        expectRequestFailure(() -> self.updateOperatorConfiguration(other, true, null, null), 403);
+    }
+
+    @Test
+    void testConfigurationIsHiddenFromOtherOperators() {
+        String target = createOperatorUuid("ofd2_hidden");
+        client.setAutoAssign(target, true);
+
+        FederationClient viewer = createLimitedOperator("ofd2_viewer", false, false, true);
+        OperatorRecord seen = viewer.getOperator(target);
+        assertNull(seen.configuration(), "The configuration is only disclosed to the operator and to operators with operator permissions");
+        assertFalse(seen.isConfigurationVisible());
+        assertNull(createAnonymousClient().getOperator(target).configuration());
+
+        assertTrue(client.getOperator(target).isAutoAssigned());
+    }
+
+    @Test
+    void testRootConfigurationCannotBeModified() {
+        String rootUuid = client.getSelf().uuid();
+        expectRequestFailure(() -> client.setBot(rootUuid, true), 403);
+    }
+
+    @Test
+    void testOperatorRecordDeserializesPermissionsAndConfiguration() {
+        OperatorRecord operator = Json.readValue("""
+            {
+              "uuid": "01a15854-9ea9-73ca-bcf3-b8ad74f9bb40",
+              "name": "bot_operator",
+              "disabled": false,
+              "permissions": {"client": true, "management": true, "operator": false},
+              "configuration": {"auto_assign_reports": false, "auto_assign_automated_reports": true, "is_bot": true},
+              "created": 1760000000,
+              "updated": 1760000001
+            }
+            """, OperatorRecord.class);
+
+        assertEquals(new OperatorPermissions(true, true, false), operator.permissions());
+        assertTrue(operator.hasClientPermissions());
+        assertTrue(operator.hasManagementPermissions());
+        assertFalse(operator.hasOperatorPermissions());
+
+        assertTrue(operator.isConfigurationVisible());
+        assertFalse(operator.isAutoAssignReports());
+        assertTrue(operator.isAutoAssignAutomatedReports());
+        assertTrue(operator.isAutoAssigned());
+        assertTrue(operator.isBot());
+    }
+
+    @Test
+    void testOperatorRecordWithUndisclosedConfiguration() {
+        OperatorRecord operator = Json.readValue("""
+            {"uuid": "u", "name": "n", "disabled": false,
+             "permissions": {"client": true, "management": false, "operator": false},
+             "configuration": null, "created": 0, "updated": 0}
+            """, OperatorRecord.class);
+
+        assertNull(operator.configuration());
+        assertFalse(operator.isConfigurationVisible());
+        assertFalse(operator.isAutoAssigned());
+        assertFalse(operator.isBot());
+
+        // A record without permissions holds none
+        OperatorRecord withoutPermissions = Json.readValue("{\"uuid\": \"u\", \"name\": \"n\"}", OperatorRecord.class);
+        assertEquals(new OperatorPermissions(false, false, false), withoutPermissions.permissions());
+    }
+
+    @Test
+    void testUpdateOperatorArgumentsAreValidatedClientSide() {
+        assertThrows(IllegalArgumentException.class, () -> client.updateOperatorPermissions("uuid", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> client.updateOperatorPermissions("", true, null, null));
+        assertThrows(IllegalArgumentException.class, () -> client.updateOperatorConfiguration("uuid", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> client.updateOperatorConfiguration("", true, null, null));
+        assertThrows(IllegalArgumentException.class, () -> client.setBot("", true));
     }
 }

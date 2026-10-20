@@ -1,13 +1,14 @@
 package net.nosial.jfederation;
 
 import net.nosial.jfederation.enums.ClassificationFlag;
+import net.nosial.jfederation.enums.ContentType;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
-import net.nosial.jfederation.records.ReportRecord;
-import net.nosial.jfederation.records.ReportSubmission;
 import net.nosial.jfederation.records.ContentInput;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.FileAttachmentRecord;
+import net.nosial.jfederation.records.ReportRecord;
+import net.nosial.jfederation.records.ReportSubmission;
 import net.nosial.jfederation.records.UploadResult;
 import org.junit.jupiter.api.Test;
 
@@ -709,5 +710,17 @@ class ReportsClientTest extends FederationClientTestBase {
 
     private String getSelfUuid(FederationClient fc) {
         return fc.getSelf().uuid();
+    }
+
+    @Test
+    void testReportEvidenceCarriesContentType() {
+        String entityUuid = createSecurityEntity();
+        ContentInput input = new ContentInput("https://login.example.com/verify", ContentType.URL);
+
+        ReportSubmission submission = client.submitReport(entityUuid, input, IncidentType.PHISHING);
+        createdReports.add(submission.getReport().uuid());
+        submission.getEvidence().forEach(evidence -> createdEvidenceRecords.add(evidence.uuid()));
+
+        assertSame(ContentType.URL, client.getEvidenceRecord(submission.getEvidence().getFirst().uuid()).contentType());
     }
 }

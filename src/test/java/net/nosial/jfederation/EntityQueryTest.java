@@ -1,10 +1,13 @@
 package net.nosial.jfederation;
 
+import net.nosial.jfederation.enums.IncidentType;
+import net.nosial.jfederation.records.EntityQueryResult;
 import net.nosial.jfederation.records.EntityRecord;
 import org.junit.jupiter.api.Test;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -266,5 +269,25 @@ class EntityQueryTest extends FederationClientTestBase {
         assertEquals(entityUuid, entityByHash.uuid());
         assertEquals(host, entityByHash.host());
         assertEquals(id, entityByHash.id());
+    }
+
+    @Test
+    void testQueryEntityWithConcerns() {
+        String entityUuid = createSecurityEntity();
+        String blacklistUuid = client.blacklistEntity(entityUuid, IncidentType.MALWARE);
+        createdBlacklistRecords.add(blacklistUuid);
+
+        EntityQueryResult malware = client.queryEntity(entityUuid, List.of(IncidentType.MALWARE));
+        assertNotNull(malware.suggestedAction(), "A blacklist record of a requested concern suggests an action");
+
+        EntityQueryResult spam = client.queryEntity(entityUuid, List.of(IncidentType.SPAM));
+        assertNull(spam.suggestedAction(), "Blacklist records of other incident types do not suggest blocking");
+        assertTrue(spam.activeBlacklists().stream().anyMatch(record -> record.uuid().equals(blacklistUuid)),
+            "Concerns do not filter the active blacklist records");
+    }
+
+    @Test
+    void testQueryEntityRejectsEmptyConcerns() {
+        assertThrows(IllegalArgumentException.class, () -> client.queryEntity("example.com", List.of()));
     }
 }

@@ -1,5 +1,6 @@
 package net.nosial.jfederation;
 
+import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.FileAttachmentRecord;
 import net.nosial.jfederation.records.UploadResult;
@@ -484,5 +485,22 @@ class AttachmentClientTest extends FederationClientTestBase {
         byte[] downloadedBytes = Files.readAllBytes(Path.of(downloaded));
 
         assertArrayEquals(binaryContent, downloadedBytes);
+    }
+
+    @Test
+    void testUrlUploadsRejectNonPublicAddresses() {
+        String evidenceUuid = createSecurityEvidence(createSecurityEntity());
+
+        // URL uploads from non-public addresses are rejected by default, guarding against server-side request forgery
+        for (String url : List.of("http://127.0.0.1/file.txt", "http://10.0.0.1/", "http://169.254.169.254/latest/meta-data/", "http://[::1]/")) {
+            expectRequestFailure(() -> client.uploadFileAttachmentByUrl(evidenceUuid, url), 400);
+        }
+    }
+
+    @Test
+    void testFileAttachmentRecordWithoutEvidence() {
+        assertNull(Json.readValue("{\"uuid\": \"f\", \"evidence\": \"\"}", FileAttachmentRecord.class).evidenceUuid());
+        assertNull(Json.readValue("{\"uuid\": \"f\", \"evidence\": null}", FileAttachmentRecord.class).evidenceUuid());
+        assertEquals("e", Json.readValue("{\"uuid\": \"f\", \"evidence\": \"e\"}", FileAttachmentRecord.class).evidenceUuid());
     }
 }

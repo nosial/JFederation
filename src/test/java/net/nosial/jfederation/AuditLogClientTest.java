@@ -1,11 +1,12 @@
 package net.nosial.jfederation;
 
+import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.AuditLogType;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.AuditLog;
-import org.junit.jupiter.api.Test;
 import net.nosial.jfederation.records.OperatorCreated;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -454,5 +455,27 @@ class AuditLogClientTest extends FederationClientTestBase {
             new int[]{403},
             "Client-only operator should not be able to list another operator's audit logs"
         );
+    }
+
+    @Test
+    void testAuditLogEntriesCarryTheReport() {
+        String entityUuid = createSecurityEntity();
+        String reportUuid = createReportForEntity(entityUuid);
+
+        List<AuditLog> entries = client.listEntityAuditLogs(entityUuid, 1, 100);
+        assertTrue(entries.stream().anyMatch(entry -> reportUuid.equals(entry.reportUuid())),
+            "The entry of the report submission references the report");
+    }
+
+    @Test
+    void testAuditLogDeserializesReport() {
+        AuditLog entry = Json.readValue("""
+            {"uuid": "a", "operator": "o", "entity": "n", "report": "r", "type": "REPORT_SUBMITTED",
+             "message": "Report submitted", "timestamp": 1760000000}
+            """, AuditLog.class);
+
+        assertEquals("r", entry.reportUuid());
+        assertSame(AuditLogType.REPORT_SUBMITTED, entry.type());
+        assertNull(Json.readValue("{\"uuid\": \"a\"}", AuditLog.class).reportUuid());
     }
 }

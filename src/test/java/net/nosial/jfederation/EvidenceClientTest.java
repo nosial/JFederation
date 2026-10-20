@@ -1,6 +1,8 @@
 package net.nosial.jfederation;
 
+import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.ClassificationFlag;
+import net.nosial.jfederation.enums.ContentType;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.EvidenceRecord;
@@ -474,5 +476,84 @@ class EvidenceClientTest extends FederationClientTestBase {
                 ));
             assertEquals(403, submitException.getStatusCode());
         }
+    }
+
+    @Test
+    void testBotEvidenceIsAutomatedAndConfidential() {
+        FederationClient bot = createLimitedOperator("ofd2_bot", false, false, true);
+        String botUuid = bot.getSelf().uuid();
+        client.setBot(botUuid, true);
+        assertTrue(client.getOperator(botUuid).isBot());
+
+        String entityUuid = createSecurityEntity();
+        String evidenceUuid = bot.submitEvidence(entityUuid, "Automated finding", null, null, false);
+        createdEvidenceRecords.add(evidenceUuid);
+
+        EvidenceRecord evidence = client.getEvidenceRecord(evidenceUuid);
+        assertTrue(evidence.automated());
+        assertTrue(evidence.confidential(), "Automated evidence is created confidential");
+
+        List<String> automated = client.listEvidence(1, 100, true, "AUTOMATED").stream().map(EvidenceRecord::uuid).toList();
+        assertTrue(automated.contains(evidenceUuid));
+        List<String> notAutomated = client.listEvidence(1, 100, true, "NOT_AUTOMATED").stream().map(EvidenceRecord::uuid).toList();
+        assertFalse(notAutomated.contains(evidenceUuid));
+
+        // A manager can make automated evidence public afterwards
+        client.updateEvidenceConfidentiality(evidenceUuid, false);
+        assertFalse(client.getEvidenceRecord(evidenceUuid).confidential());
+
+        String humanEvidence = createSecurityEvidence(entityUuid);
+        assertFalse(client.getEvidenceRecord(humanEvidence).automated());
+    }
+
+    @Test
+    void testSubmitEvidenceWithContentTypeAndContext() {
+        String entityUuid = createSecurityEntity();
+        Map<String, String> context = Map.of("subject", "Your invoice", "sender", "billing@example.com");
+
+        String evidenceUuid = client.submitEvidence(entityUuid, "Pay the attached invoice", null, null, false, null, null,
+            ContentType.EMAIL, context);
+        createdEvidenceRecords.add(evidenceUuid);
+
+        EvidenceRecord evidence = client.getEvidenceRecord(evidenceUuid);
+        assertSame(ContentType.EMAIL, evidence.contentType());
+        assertEquals(context, evidence.getContext());
+
+        String textUuid = createSecurityEvidence(entityUuid);
+        assertSame(ContentType.TEXT, client.getEvidenceRecord(textUuid).contentType());
+    }
+
+    @Test
+    void testSubmitEvidenceRejectsInvalidContext() {
+        String entityUuid = createSecurityEntity();
+
+        // A WEB_PAGE requires the url key, and keys must be defined for the content type
+        expectRequestFailure(() -> client.submitEvidence(entityUuid, "Page text", null, null, false, null, null,
+            ContentType.WEB_PAGE, Map.of("title", "Missing URL")), 400);
+        expectRequestFailure(() -> client.submitEvidence(entityUuid, "Body", null, null, false, null, null,
+            ContentType.EMAIL, Map.of("region", "US")), 400);
+    }
+
+    @Test
+    void testEvidenceRecordDeserializesOfd2Members() {
+        EvidenceRecord evidence = Json.readValue("""
+            {
+              "uuid": "e", "entity": "n", "operator": "o",
+              "confidential": true, "automated": true,
+              "text_content": "https://example.com/login",
+              "content_type": "WEB_PAGE",
+              "context": {"url": "https://example.com/login", "title": "Login"}
+            }
+            """, EvidenceRecord.class);
+
+        assertTrue(evidence.automated());
+        assertTrue(evidence.confidential());
+        assertSame(ContentType.WEB_PAGE, evidence.contentType());
+        assertEquals(Map.of("url", "https://example.com/login", "title", "Login"), evidence.getContext());
+
+        EvidenceRecord plain = Json.readValue("{\"uuid\": \"e\", \"context\": []}", EvidenceRecord.class);
+        assertSame(ContentType.TEXT, plain.contentType(), "Evidence without a content type is text");
+        assertFalse(plain.automated());
+        assertEquals(Map.of(), plain.getContext());
     }
 }
