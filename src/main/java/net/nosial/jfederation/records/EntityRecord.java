@@ -11,6 +11,7 @@ import java.util.Map;
  * Immutable record representing a security entity tracked by the Federation server.
  *
  * @param uuid the unique entity identifier
+ * @param hash the SHA-256 identifier of the entity
  * @param host the entity hostname or IP address
  * @param id an optional user-level identifier
  * @param metadata optional metadata as a raw JSON node
@@ -24,6 +25,7 @@ import java.util.Map;
  */
 public record EntityRecord(
     @JsonProperty("uuid") String uuid,
+    @JsonProperty("hash") String hash,
     @JsonProperty("host") String host,
     @JsonProperty("id") String id,
     @JsonProperty("metadata") JsonNode metadata,
@@ -35,6 +37,22 @@ public record EntityRecord(
     @JsonProperty("created") long created,
     @JsonProperty("updated") long updated)
 {
+    /**
+     * The entity host of telephone entities.
+     */
+    public static final String TELEPHONE_ENTITY_HOST = "e164.arpa";
+
+    /**
+     * Returns whether the entity is a telephone entity ({@code <E.164 number>@e164.arpa}). Unless a server publishes
+     * {@link ServerInformation#publicTelephoneEntities()}, telephone entities are hidden from unauthenticated requests.
+     *
+     * @return true if the entity host is {@code e164.arpa}
+     */
+    public boolean isTelephone()
+    {
+        return TELEPHONE_ENTITY_HOST.equalsIgnoreCase(host) && id != null;
+    }
+
     /**
      * Deserializes and returns the metadata as a map, or an empty map if no metadata is present.
      * The Federation server may serialize metadata either as a JSON object or as a JSON-encoded
