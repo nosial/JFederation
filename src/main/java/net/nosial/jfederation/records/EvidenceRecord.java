@@ -1,8 +1,13 @@
 package net.nosial.jfederation.records;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
+import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.ClassificationFlag;
+import net.nosial.jfederation.enums.ContentType;
+
+import java.util.Map;
 
 
 /**
@@ -12,7 +17,11 @@ import net.nosial.jfederation.enums.ClassificationFlag;
  * @param entityUuid the UUID of the entity this evidence is associated with
  * @param operatorUuid the UUID of the operator who submitted the evidence
  * @param confidential whether the evidence is marked as confidential
+ * @param automated whether the evidence is automated, created by the host itself or submitted by a bot operator;
+ *                  automated evidence is created confidential
  * @param textContent the text content of the evidence
+ * @param contentType the type of the content, {@link ContentType#TEXT} when the server does not report one
+ * @param context the context of the content as a raw JSON node, or {@code null}; see {@link #getContext()}
  * @param note an optional note attached to the evidence
  * @param tag an optional tag categorizing the evidence
  * @param report the UUID of the report this evidence is linked to, or {@code null}
@@ -26,7 +35,10 @@ public record EvidenceRecord(
     @JsonProperty("entity") String entityUuid,
     @JsonProperty("operator") String operatorUuid,
     @JsonProperty("confidential") boolean confidential,
+    @JsonProperty("automated") boolean automated,
     @JsonProperty("text_content") String textContent,
+    @JsonProperty("content_type") ContentType contentType,
+    @JsonProperty("context") JsonNode context,
     @JsonProperty("note") String note,
     @JsonProperty("tag") String tag,
     @JsonProperty("report") String report,
@@ -34,4 +46,30 @@ public record EvidenceRecord(
     @JsonProperty("classification_flag") ClassificationFlag classificationFlag,
     @JsonProperty("created") long created,
     @JsonProperty("updated") long updated)
-{ }
+{
+    /**
+     * Compact constructor, evidence without a content type is text.
+     */
+    public EvidenceRecord
+    {
+        if (contentType == null)
+        {
+            contentType = ContentType.TEXT;
+        }
+    }
+
+    /**
+     * Returns the context of the content as a map of strings.
+     *
+     * @return The context, or an empty map if the evidence has none
+     */
+    public Map<String, String> getContext()
+    {
+        if (context == null || !context.isObject() || context.isEmpty())
+        {
+            return Map.of();
+        }
+
+        return Json.mapper().convertValue(context, new TypeReference<Map<String, String>>() {});
+    }
+}
