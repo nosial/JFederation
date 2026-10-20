@@ -4,6 +4,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.ClassificationFlag;
+import net.nosial.jfederation.enums.ContentType;
 import net.nosial.jfederation.enums.EntityRelationshipType;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.enums.RecordType;
@@ -21,6 +22,8 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
@@ -374,7 +377,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches across all record types with optional type filter and pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param types Optional list of record types to restrict the search to, or {@code null} for all types
      * @param page The page number (1-based)
      * @param limit Items per page (minimum 1)
@@ -383,10 +386,7 @@ public final class FederationClient implements AutoCloseable
      */
     public List<SearchResult> search(String query, List<RecordType> types, int page, int limit)
     {
-        if (query.length() < 2)
-        {
-            throw new IllegalArgumentException("Search query must be at least 2 characters");
-        }
+        validateQuery(query);
 
         if (page < 1) throw new IllegalArgumentException("Page must be greater than 0");
         if (limit < 1) throw new IllegalArgumentException("Limit must be greater than 0");
@@ -407,7 +407,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Shortcut for {@link #search(String, List, int, int) search(query, null, 1, 10)}.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @return A list of {@link SearchResult} entries
      */
     public List<SearchResult> search(String query)
@@ -418,7 +418,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches with record type filters using default pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param types The record types to restrict the search to, or {@code null} for all types
      * @return A list of {@link SearchResult} entries
      */
@@ -430,7 +430,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches without record type filters using explicit pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @return A list of {@link SearchResult} entries
@@ -523,7 +523,23 @@ public final class FederationClient implements AutoCloseable
      */
     public ScannedContent scanContent(ContentInput evidence, String author, Integer topK, Float threshold)
     {
-        return scanContent(List.of(evidence), author, topK, threshold);
+        return scanContent(List.of(evidence), author, topK, threshold, null);
+    }
+
+    /**
+     * Scans a single content input with respect to the given concerns.
+     *
+     * @param evidence The content input to scan
+     * @param author The author entity identifier, or {@code null}
+     * @param topK The maximum number of entity matches to return, or {@code null}
+     * @param threshold The classification confidence threshold, or {@code null}
+     * @param concerns The incident types to assess, which must be among the concerns the server publishes, or
+     *                 {@code null} for the server's default concerns
+     * @return A {@link ScannedContent} with the scan results
+     */
+    public ScannedContent scanContent(ContentInput evidence, String author, Integer topK, Float threshold, List<IncidentType> concerns)
+    {
+        return scanContent(List.of(evidence), author, topK, threshold, concerns);
     }
 
     /**
@@ -597,6 +613,28 @@ public final class FederationClient implements AutoCloseable
      */
     public ScannedContent scanContent(List<ContentInput> evidence, String author, Integer topK, Float threshold)
     {
+        return scanContent(evidence, author, topK, threshold, null);
+    }
+
+    /**
+     * Scans one or more content inputs with respect to the given concerns. Only these concerns affect the
+     * classification, risk score, suggested action and detections returned, and the blocking suggested actions
+     * consider only active blacklist records of these incident types. A server should not assess
+     * {@link IncidentType#ADVERTISING} or {@link IncidentType#TRACKING} unless they are requested.
+     *
+     * @param evidence The content inputs to scan (must not be empty)
+     * @param author The author entity identifier, or {@code null}; a telephone number is given as a telephone entity
+     *               in canonical form ({@code <E.164 number>@e164.arpa})
+     * @param topK The maximum number of entity matches to return, or {@code null}
+     * @param threshold The classification confidence threshold, or {@code null}
+     * @param concerns The incident types to assess, which must be among the concerns the server publishes, or
+     *                 {@code null} for the server's default concerns
+     * @return A {@link ScannedContent} with the scan results
+     * @throws IllegalArgumentException if evidence is empty, contains null, none of the inputs contain text content,
+     *                                  or the concerns are empty
+     */
+    public ScannedContent scanContent(List<ContentInput> evidence, String author, Integer topK, Float threshold, List<IncidentType> concerns)
+    {
         if (evidence == null || evidence.isEmpty())
         {
             throw new IllegalArgumentException("Evidence cannot be empty");
@@ -627,6 +665,7 @@ public final class FederationClient implements AutoCloseable
         if (author != null) params.put("author", author);
         if (topK != null) params.put("top_k", topK);
         if (threshold != null) params.put("threshold", threshold);
+        if (concerns != null) params.put("concerns", concernValues(concerns));
 
         JsonNode node = makeRequest("POST", "scan", params, 200, "Failed to scan content");
         return Json.mapper().convertValue(node, ScannedContent.class);
@@ -728,7 +767,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches audit log entries by query text with pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @return A list of matching {@link AuditLog} entries
@@ -741,7 +780,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches audit log entries by query text with pagination and an optional category filter.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. OPERATOR_EVENTS, ENTITY_EVENTS), or {@code null}
@@ -755,7 +794,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches audit log entries by query text with pagination, an optional category filter, and a sort field.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. OPERATOR_EVENTS, ENTITY_EVENTS), or {@code null}
@@ -770,7 +809,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches audit log entries by query text with pagination, optional category filter, and sorting.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. OPERATOR_EVENTS, ENTITY_EVENTS), or {@code null}
@@ -780,10 +819,7 @@ public final class FederationClient implements AutoCloseable
      */
     public List<AuditLog> searchAuditLogs(String query, int page, int limit, String category, String by, String order)
     {
-        if (query.length() < 2)
-        {
-            throw new IllegalArgumentException("Search query must be at least 2 characters");
-        }
+        validateQuery(query);
         if (page < 1) throw new IllegalArgumentException("Page must be greater than 0");
         if (limit < 1) throw new IllegalArgumentException("Limit must be greater than 0");
 
@@ -1217,6 +1253,75 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
+     * Grants or revokes permission groups of an operator, leaving the groups given as {@code null} unchanged.
+     * Management permissions inherit client permissions, so the server rejects revoking client permissions from an
+     * operator that keeps management permissions with HTTP 409. Requires operator permissions.
+     *
+     * @param operatorUuid The UUID of the operator
+     * @param client Whether the operator holds client permissions, or {@code null} to leave them unchanged
+     * @param management Whether the operator holds management permissions, or {@code null} to leave them unchanged
+     * @param operator Whether the operator holds operator permissions, or {@code null} to leave them unchanged
+     * @return The updated {@link OperatorPermissions} of the operator
+     * @throws IllegalArgumentException If the operator UUID is empty or no permission group is given
+     */
+    public OperatorPermissions updateOperatorPermissions(String operatorUuid, Boolean client, Boolean management, Boolean operator)
+    {
+        if (operatorUuid == null || operatorUuid.isEmpty())
+        {
+            throw new IllegalArgumentException("Operator UUID cannot be empty");
+        }
+
+        Map<String, Object> params = new LinkedHashMap<>();
+        if (client != null) params.put("client", client);
+        if (management != null) params.put("management", management);
+        if (operator != null) params.put("operator", operator);
+        if (params.isEmpty())
+        {
+            throw new IllegalArgumentException("At least one permission group must be given");
+        }
+
+        JsonNode node = makeRequest("PATCH", "operators/" + operatorUuid + "/permissions", params, 200,
+            "Failed to update the permissions of operator " + operatorUuid);
+        return Json.mapper().convertValue(node, OperatorPermissions.class);
+    }
+
+    /**
+     * Changes the configuration of an operator, leaving the settings given as {@code null} unchanged. An operator may
+     * change its own configuration, changing the configuration of another operator requires operator permissions;
+     * the root and system operators can't be modified.
+     *
+     * @param operatorUuid The UUID of the operator
+     * @param autoAssignReports Whether the operator opts in to the automatic assignment of reports that are not
+     *                          automated, or {@code null} to leave it unchanged
+     * @param autoAssignAutomatedReports Whether the operator opts in to the automatic assignment of automated reports,
+     *                                   or {@code null} to leave it unchanged
+     * @param isBot Whether the operator is a bot, whose evidence and reports are automated and whose evidence is
+     *              created confidential, or {@code null} to leave it unchanged
+     * @return The updated {@link OperatorConfiguration} of the operator
+     * @throws IllegalArgumentException If the operator UUID is empty or no setting is given
+     */
+    public OperatorConfiguration updateOperatorConfiguration(String operatorUuid, Boolean autoAssignReports, Boolean autoAssignAutomatedReports, Boolean isBot)
+    {
+        if (operatorUuid == null || operatorUuid.isEmpty())
+        {
+            throw new IllegalArgumentException("Operator UUID cannot be empty");
+        }
+
+        Map<String, Object> params = new LinkedHashMap<>();
+        if (autoAssignReports != null) params.put("auto_assign_reports", autoAssignReports);
+        if (autoAssignAutomatedReports != null) params.put("auto_assign_automated_reports", autoAssignAutomatedReports);
+        if (isBot != null) params.put("is_bot", isBot);
+        if (params.isEmpty())
+        {
+            throw new IllegalArgumentException("At least one setting must be given");
+        }
+
+        JsonNode node = makeRequest("PATCH", "operators/" + operatorUuid + "/configuration", params, 200,
+            "Failed to update the configuration of operator " + operatorUuid);
+        return Json.mapper().convertValue(node, OperatorConfiguration.class);
+    }
+
+    /**
      * Sets whether an operator has operator-level permissions.
      *
      * @param operatorUuid The UUID of the operator
@@ -1224,76 +1329,55 @@ public final class FederationClient implements AutoCloseable
      */
     public void setOperatorPermissions(String operatorUuid, boolean hasOperatorPermissions)
     {
-        if (operatorUuid == null || operatorUuid.isEmpty())
-        {
-            throw new IllegalArgumentException("Operator UUID cannot be empty");
-        }
-
-        Map<String, Object> params = new LinkedHashMap<>();
-        params.put("enabled", hasOperatorPermissions);
-
-        makeRequest("PATCH", "operators/" + operatorUuid + "/operator-permissions", params, 200,
-            "Failed to " + (hasOperatorPermissions ? "enable" : "disable") + " the operator's operator permissions");
+        updateOperatorPermissions(operatorUuid, null, null, hasOperatorPermissions);
     }
 
     /**
-     * Sets whether an operator has client-level permissions.
+     * Sets whether an operator has client-level permissions. Client permissions cannot be revoked from an operator
+     * that holds management permissions, which inherit them (HTTP 409).
      *
      * @param operatorUuid The UUID of the operator
      * @param hasClientPermissions {@code true} to grant client permissions, {@code false} to revoke
      */
     public void setClientPermissions(String operatorUuid, boolean hasClientPermissions)
     {
-        if (operatorUuid == null || operatorUuid.isEmpty())
-        {
-            throw new IllegalArgumentException("Operator UUID cannot be empty");
-        }
-
-        Map<String, Object> params = new LinkedHashMap<>();
-        params.put("enabled", hasClientPermissions);
-
-        makeRequest("PATCH", "operators/" + operatorUuid + "/client-permissions", params, 200,
-            "Failed to " + (hasClientPermissions ? "enable" : "disable") + " the operator's client permissions");
+        updateOperatorPermissions(operatorUuid, hasClientPermissions, null, null);
     }
 
     /**
-     * Sets whether an operator has management-level permissions.
+     * Sets whether an operator has management-level permissions. Granting management permissions also grants client
+     * permissions, which revoking them leaves in place.
      *
      * @param operatorUuid The UUID of the operator
      * @param hasManagementPermissions {@code true} to grant management permissions, {@code false} to revoke
      */
     public void setManagementPermissions(String operatorUuid, boolean hasManagementPermissions)
     {
-        if (operatorUuid == null || operatorUuid.isEmpty())
-        {
-            throw new IllegalArgumentException("Operator UUID cannot be empty");
-        }
-
-        Map<String, Object> params = new LinkedHashMap<>();
-        params.put("enabled", hasManagementPermissions);
-
-        makeRequest("PATCH", "operators/" + operatorUuid + "/management-permissions", params, 200,
-            "Failed to " + (hasManagementPermissions ? "enable" : "disable") + " operator's management permission");
+        updateOperatorPermissions(operatorUuid, null, hasManagementPermissions, null);
     }
 
     /**
-     * Sets whether an operator is eligible to be automatically assigned reports generated by the host.
+     * Sets whether an operator opts in to the automatic assignment of every report, ordinary and automated. Use
+     * {@link #updateOperatorConfiguration(String, Boolean, Boolean, Boolean)} to opt in to one kind only.
      *
      * @param operatorUuid The UUID of the operator
-     * @param autoAssign {@code true} to enable automatic report assignment, {@code false} to disable
+     * @param autoAssign {@code true} to opt in to both kinds of reports, {@code false} to opt out of both
      */
     public void setAutoAssign(String operatorUuid, boolean autoAssign)
     {
-        if (operatorUuid == null || operatorUuid.isEmpty())
-        {
-            throw new IllegalArgumentException("Operator UUID cannot be empty");
-        }
+        updateOperatorConfiguration(operatorUuid, autoAssign, autoAssign, null);
+    }
 
-        Map<String, Object> params = new LinkedHashMap<>();
-        params.put("enabled", autoAssign);
-
-        makeRequest("PATCH", "operators/" + operatorUuid + "/auto-assign", params, 200,
-            "Failed to " + (autoAssign ? "enable" : "disable") + " the operator's auto assign");
+    /**
+     * Sets whether an operator is a bot, whose evidence and reports are automated and whose evidence is created
+     * confidential.
+     *
+     * @param operatorUuid The UUID of the operator
+     * @param isBot {@code true} if the operator is a bot
+     */
+    public void setBot(String operatorUuid, boolean isBot)
+    {
+        updateOperatorConfiguration(operatorUuid, null, null, isBot);
     }
 
     /**
@@ -1346,7 +1430,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches operators by query text with pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @return A list of matching {@link OperatorRecord} entries
@@ -1359,7 +1443,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches operators by query text with pagination and an optional category filter.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. ENABLED, DISABLED), or {@code null}
@@ -1373,7 +1457,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches operators by query text with pagination, an optional category filter, and a sort field.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. ENABLED, DISABLED), or {@code null}
@@ -1388,7 +1472,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches operators by query text with pagination, optional category filter, and sorting.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. ENABLED, DISABLED), or {@code null}
@@ -1398,10 +1482,7 @@ public final class FederationClient implements AutoCloseable
      */
     public List<OperatorRecord> searchOperators(String query, int page, int limit, String category, String by, String order)
     {
-        if (query.length() < 2)
-        {
-            throw new IllegalArgumentException("Search query must be at least 2 characters");
-        }
+        validateQuery(query);
 
         if (page < 1) throw new IllegalArgumentException("Page must be greater than 0");
         if (limit < 1) throw new IllegalArgumentException("Limit must be greater than 0");
@@ -1627,7 +1708,7 @@ public final class FederationClient implements AutoCloseable
             throw new IllegalArgumentException("Entity identifier cannot be empty");
         }
 
-        makeRequest("DELETE", "entities/" + entityIdentifier, null, 200,
+        makeRequest("DELETE", entityPath(entityIdentifier), null, 200,
             "Failed to delete the entity " + entityIdentifier);
     }
 
@@ -1644,7 +1725,7 @@ public final class FederationClient implements AutoCloseable
             throw new IllegalArgumentException("Entity identifier cannot be empty");
         }
 
-        JsonNode node = makeRequest("GET", "entities/" + entityIdentifier, null, 200,
+        JsonNode node = makeRequest("GET", entityPath(entityIdentifier), null, 200,
             "Failed to get the entity record for " + entityIdentifier);
         return Json.mapper().convertValue(node, EntityRecord.class);
     }
@@ -1656,12 +1737,34 @@ public final class FederationClient implements AutoCloseable
      */
     public EntityQueryResult queryEntity(String entityIdentifier)
     {
+        return queryEntity(entityIdentifier, null);
+    }
+
+    /**
+     * Retrieves an entity together with its direct relationship group and active blacklist state, suggesting an
+     * action with respect to the given concerns only. The active blacklists are returned regardless of the concerns.
+     *
+     * @param entityIdentifier The entity UUID, hostname, or SHA-256 hash
+     * @param concerns The incident types to assess, which must be among the concerns the server publishes, or
+     *                 {@code null} for the server's default concerns
+     * @return The entity query result
+     * @throws IllegalArgumentException if the entity identifier is empty or the concerns are empty
+     */
+    public EntityQueryResult queryEntity(String entityIdentifier, List<IncidentType> concerns)
+    {
         if (entityIdentifier == null || entityIdentifier.isEmpty())
         {
             throw new IllegalArgumentException("Entity identifier cannot be empty");
         }
 
-        JsonNode node = makeRequest("GET", "entities/" + entityIdentifier + "/query", null, 200,
+        Map<String, Object> params = null;
+        if (concerns != null)
+        {
+            params = new LinkedHashMap<>();
+            params.put("concerns", String.join(",", concernValues(concerns)));
+        }
+
+        JsonNode node = makeRequest("GET", entityPath(entityIdentifier) + "/query", params, 200,
             "Failed to query entity " + entityIdentifier);
         return Json.mapper().convertValue(node, EntityQueryResult.class);
     }
@@ -1839,7 +1942,7 @@ public final class FederationClient implements AutoCloseable
         if (category != null) params.put("category", category);
         applySortParams(params, by, order);
 
-        JsonNode node = makeRequest("GET", "entities/" + entityIdentifier + "/audit", params, 200,
+        JsonNode node = makeRequest("GET", entityPath(entityIdentifier) + "/audit", params, 200,
             "Failed to list audit logs for entity " + entityIdentifier);
         return Json.mapper().convertValue(node, new TypeReference<>() {});
     }
@@ -1925,7 +2028,7 @@ public final class FederationClient implements AutoCloseable
         params.put("include_lifted", includeLifted);
         applySortParams(params, by, order);
 
-        JsonNode node = makeRequest("GET", "entities/" + entityIdentifier + "/blacklist", params, 200,
+        JsonNode node = makeRequest("GET", entityPath(entityIdentifier) + "/blacklist", params, 200,
             "Failed to list blacklist records for entity " + entityIdentifier);
         return Json.mapper().convertValue(node, new TypeReference<>() {});
     }
@@ -2011,7 +2114,7 @@ public final class FederationClient implements AutoCloseable
         params.put("include_confidential", includeConfidential);
         applySortParams(params, by, order);
 
-        JsonNode node = makeRequest("GET", "entities/" + entityIdentifier + "/evidence", params, 200,
+        JsonNode node = makeRequest("GET", entityPath(entityIdentifier) + "/evidence", params, 200,
             "Failed to list evidence records for entity " + entityIdentifier);
         return Json.mapper().convertValue(node, new TypeReference<>() {});
     }
@@ -2096,7 +2199,7 @@ public final class FederationClient implements AutoCloseable
         if (category != null) params.put("category", category);
         applySortParams(params, by, order);
 
-        JsonNode node = makeRequest("GET", "entities/" + entityIdentifier + "/reports", params, 200,
+        JsonNode node = makeRequest("GET", entityPath(entityIdentifier) + "/reports", params, 200,
             "Failed to list reports for entity " + entityIdentifier);
         return Json.mapper().convertValue(node, new TypeReference<>() {});
     }
@@ -2180,7 +2283,7 @@ public final class FederationClient implements AutoCloseable
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("metadata", metadata);
 
-        makeRequest("PATCH", "entities/" + entityIdentifier, params, 200,
+        makeRequest("PATCH", entityPath(entityIdentifier), params, 200,
             "Failed to update entity " + entityIdentifier);
     }
 
@@ -2200,7 +2303,7 @@ public final class FederationClient implements AutoCloseable
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("whitelisted", whitelisted);
 
-        makeRequest("PATCH", "entities/" + entityIdentifier + "/whitelist", params, 200,
+        makeRequest("PATCH", entityPath(entityIdentifier) + "/whitelist", params, 200,
             "Failed to set whitelist state for entity " + entityIdentifier);
     }
 
@@ -2216,7 +2319,7 @@ public final class FederationClient implements AutoCloseable
             throw new IllegalArgumentException("Entity identifier cannot be empty");
         }
 
-        makeRequest("PATCH", "entities/" + entityIdentifier + "/clear-reputation", null, 200,
+        makeRequest("PATCH", entityPath(entityIdentifier) + "/clear-reputation", null, 200,
             "Failed to clear reputation for entity " + entityIdentifier);
     }
 
@@ -2244,7 +2347,7 @@ public final class FederationClient implements AutoCloseable
         params.put("target_identifier", relatedEntityIdentifier);
         params.put("relationship_type", relationshipType.getValue());
 
-        makeRequest("PATCH", "entities/" + entityIdentifier + "/relationship", params, 200,
+        makeRequest("PATCH", entityPath(entityIdentifier) + "/relationship", params, 200,
             "Failed to set relationship for entity " + entityIdentifier);
     }
 
@@ -2260,14 +2363,14 @@ public final class FederationClient implements AutoCloseable
             throw new IllegalArgumentException("Entity identifier cannot be empty");
         }
 
-        makeRequest("DELETE", "entities/" + entityIdentifier + "/relationship", null, 200,
+        makeRequest("DELETE", entityPath(entityIdentifier) + "/relationship", null, 200,
             "Failed to clear relationship for entity " + entityIdentifier);
     }
 
     /**
      * Searches entities by query text with pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @return A list of matching {@link EntityRecord} entries
@@ -2280,7 +2383,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches entities by query text with pagination and an optional category filter.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. WHITELISTED, WITH_RELATIONSHIP), or {@code null}
@@ -2294,7 +2397,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches entities by query text with pagination, an optional category filter, and a sort field.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. WHITELISTED, WITH_RELATIONSHIP), or {@code null}
@@ -2309,7 +2412,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches entities by query text with pagination, optional category filter, and sorting.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. WHITELISTED, WITH_RELATIONSHIP), or {@code null}
@@ -2319,10 +2422,7 @@ public final class FederationClient implements AutoCloseable
      */
     public List<EntityRecord> searchEntities(String query, int page, int limit, String category, String by, String order)
     {
-        if (query.length() < 2)
-        {
-            throw new IllegalArgumentException("Search query must be at least 2 characters");
-        }
+        validateQuery(query);
 
         if (page < 1) throw new IllegalArgumentException("Page must be greater than 0");
         if (limit < 1) throw new IllegalArgumentException("Limit must be greater than 0");
@@ -2592,6 +2692,26 @@ public final class FederationClient implements AutoCloseable
      */
     public String submitEvidence(String entityIdentifier, String textContent, String note, String tag, boolean confidential, Map<String, Object> metadata, ClassificationFlag classification)
     {
+        return submitEvidence(entityIdentifier, textContent, note, tag, confidential, metadata, classification, null, null);
+    }
+
+    /**
+     * Submits evidence of the given content type with its context. Evidence submitted by a bot operator is automated
+     * and created confidential, and evidence about a telephone entity is always confidential.
+     *
+     * @param entityIdentifier The entity UUID, hostname, or hash
+     * @param textContent The evidence text content, in the form its content type defines (may be {@code null})
+     * @param note An optional note
+     * @param tag An optional tag
+     * @param confidential Whether the evidence is confidential
+     * @param metadata Optional metadata key-value pairs
+     * @param classification Optional classification, requires management permissions
+     * @param contentType The type of the content, or {@code null} for {@link ContentType#TEXT}
+     * @param context Optional flat context of the content, whose keys are defined per content type, or {@code null}
+     * @return The UUID of the created evidence record
+     */
+    public String submitEvidence(String entityIdentifier, String textContent, String note, String tag, boolean confidential, Map<String, Object> metadata, ClassificationFlag classification, ContentType contentType, Map<String, String> context)
+    {
         if (entityIdentifier == null || entityIdentifier.isEmpty())
         {
             throw new IllegalArgumentException("Entity identifier cannot be empty");
@@ -2605,6 +2725,8 @@ public final class FederationClient implements AutoCloseable
         if (tag != null) params.put("tag", tag);
         if (metadata != null) params.put("metadata", metadata);
         if (classification != null) params.put("classification", classification.getValue());
+        if (contentType != null && contentType != ContentType.TEXT) params.put("content_type", contentType.getValue());
+        if (context != null) params.put("context", context);
 
         JsonNode node = makeRequest("POST", "evidence", params, 201, "Failed to submit evidence for entity " + entityIdentifier);
         return node.asString();
@@ -2680,7 +2802,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches evidence records by query text with pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @return A list of matching {@link EvidenceRecord} entries
@@ -2693,7 +2815,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches evidence records by query text with pagination and an optional category filter.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. CONFIDENTIAL, CLASSIFIED), or {@code null}
@@ -2707,7 +2829,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches evidence records by query text with pagination, an optional category filter, and a sort field.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. CONFIDENTIAL, CLASSIFIED), or {@code null}
@@ -2722,7 +2844,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches evidence records by query text with pagination, optional category filter, and sorting.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. CONFIDENTIAL, CLASSIFIED), or {@code null}
@@ -2732,10 +2854,7 @@ public final class FederationClient implements AutoCloseable
      */
     public List<EvidenceRecord> searchEvidence(String query, int page, int limit, String category, String by, String order)
     {
-        if (query.length() < 2)
-        {
-            throw new IllegalArgumentException("Search query must be at least 2 characters");
-        }
+        validateQuery(query);
 
         if (page < 1) throw new IllegalArgumentException("Page must be greater than 0");
         if (limit < 1) throw new IllegalArgumentException("Limit must be greater than 0");
@@ -3187,7 +3306,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches reports by query text with pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @return A list of matching {@link ReportRecord} entries
@@ -3200,7 +3319,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches reports by query text with pagination and an optional category filter.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional incident category filter (e.g. OPENED, CLOSED, ASSIGNED), or {@code null}
@@ -3214,7 +3333,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches reports by query text with pagination, an optional category filter, and a sort field.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional incident category filter (e.g. OPENED, CLOSED, ASSIGNED), or {@code null}
@@ -3229,7 +3348,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches reports by query text with pagination, optional category filter, and sorting.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional incident category filter (e.g. OPENED, CLOSED, ASSIGNED), or {@code null}
@@ -3239,10 +3358,7 @@ public final class FederationClient implements AutoCloseable
      */
     public List<ReportRecord> searchReports(String query, int page, int limit, String category, String by, String order)
     {
-        if (query.length() < 2)
-        {
-            throw new IllegalArgumentException("Search query must be at least 2 characters");
-        }
+        validateQuery(query);
 
         if (page < 1) throw new IllegalArgumentException("Page must be greater than 0");
         if (limit < 1) throw new IllegalArgumentException("Limit must be greater than 0");
@@ -3260,11 +3376,38 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
+     * Blacklists an entity with the given incident type, without a supporting report and without an expiration
+     * (permanent blacklist).
+     *
+     * @param entityIdentifier The entity UUID, hostname, or hash to blacklist
+     * @param type The incident type
+     * @return The UUID of the created blacklist record
+     */
+    public String blacklistEntity(String entityIdentifier, IncidentType type)
+    {
+        return blacklistEntity(entityIdentifier, null, type, null);
+    }
+
+    /**
+     * Blacklists an entity with the given incident type and optional expiration, without a supporting report.
+     *
+     * @param entityIdentifier The entity UUID, hostname, or hash to blacklist
+     * @param type The incident type
+     * @param expires The expiration timestamp (Unix epoch seconds), or {@code null} for permanent
+     * @return The UUID of the created blacklist record
+     */
+    public String blacklistEntity(String entityIdentifier, IncidentType type, Integer expires)
+    {
+        return blacklistEntity(entityIdentifier, null, type, expires);
+    }
+
+    /**
      * Blacklists an entity with the given supporting report and incident type, without an expiration
      * (permanent blacklist).
      *
      * @param entityIdentifier The entity UUID, hostname, or hash to blacklist
-     * @param reportUuid The UUID of the supporting report record
+     * @param reportUuid The UUID of the supporting report record, or {@code null}; the report may concern another
+     *                   entity (eg; the domain a reported account advertised)
      * @param type The incident type
      * @return The UUID of the created blacklist record
      */
@@ -3277,7 +3420,8 @@ public final class FederationClient implements AutoCloseable
      * Blacklists an entity with the given supporting report, incident type, and optional expiration.
      *
      * @param entityIdentifier The entity UUID, hostname, or hash to blacklist
-     * @param reportUuid The UUID of the supporting report record
+     * @param reportUuid The UUID of the supporting report record, or {@code null}; the report may concern another
+     *                   entity (eg; the domain a reported account advertised)
      * @param type The incident type
      * @param expires The expiration timestamp (Unix epoch seconds), or {@code null} for permanent
      * @return The UUID of the created blacklist record
@@ -3289,10 +3433,12 @@ public final class FederationClient implements AutoCloseable
             throw new IllegalArgumentException("The entity identifier must not be empty");
         }
 
-        if (reportUuid == null || reportUuid.isEmpty())
+        if (reportUuid != null && reportUuid.isEmpty())
         {
             throw new IllegalArgumentException("The report UUID must not be empty");
         }
+
+        Objects.requireNonNull(type, "Incident type cannot be null");
 
         if (expires != null && expires < 0)
         {
@@ -3301,9 +3447,9 @@ public final class FederationClient implements AutoCloseable
 
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("entity_identifier", entityIdentifier);
-        params.put("report_uuid", reportUuid);
+        if (reportUuid != null) params.put("report_uuid", reportUuid);
         params.put("type", type.getValue());
-        params.put("expires", expires);
+        if (expires != null) params.put("expires", expires);
 
         JsonNode node = makeRequest("POST", "blacklist", params, 201,
             "Failed to blacklist entity " + entityIdentifier);
@@ -3462,6 +3608,24 @@ public final class FederationClient implements AutoCloseable
      */
     public List<BlacklistRecord> listBlacklistRecords(int page, int limit, boolean includeLifted, String category, String by, String order)
     {
+        return listBlacklistRecords(page, limit, includeLifted, category, by, order, null);
+    }
+
+    /**
+     * Lists blacklist records of the given incident types with pagination, lifted filter, optional category filter,
+     * and sorting.
+     *
+     * @param page The page number (1-based)
+     * @param limit Items per page (minimum 1)
+     * @param includeLifted Whether to include lifted blacklist records
+     * @param category Optional category filter (e.g. ACTIVE, EXPIRED, PERMANENT), or {@code null}
+     * @param by The field to sort by (case-insensitive), or {@code null}
+     * @param order The sort direction ("ASC" or "DESC", case-insensitive), or {@code null}
+     * @param types Only blacklist records of one of these incident types are returned, or {@code null} for every type
+     * @return A list of {@link BlacklistRecord} entries
+     */
+    public List<BlacklistRecord> listBlacklistRecords(int page, int limit, boolean includeLifted, String category, String by, String order, List<IncidentType> types)
+    {
         if (page < 1) throw new IllegalArgumentException("Page must be greater than 0");
         if (limit < 1) throw new IllegalArgumentException("Limit must be greater than 0");
 
@@ -3470,6 +3634,7 @@ public final class FederationClient implements AutoCloseable
         params.put("limit", limit);
         params.put("include_lifted", includeLifted);
         if (category != null) params.put("category", category);
+        if (types != null && !types.isEmpty()) params.put("type", String.join(",", concernValues(types)));
         applySortParams(params, by, order);
 
         JsonNode node = makeRequest("GET", "blacklist", params, 200,
@@ -3481,7 +3646,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches blacklist records by query text with pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @return A list of matching {@link BlacklistRecord} entries
@@ -3494,7 +3659,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches blacklist records by query text with pagination and an optional category filter.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. ACTIVE, EXPIRED, PERMANENT), or {@code null}
@@ -3508,7 +3673,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches blacklist records by query text with pagination, an optional category filter, and a sort field.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. ACTIVE, EXPIRED, PERMANENT), or {@code null}
@@ -3523,7 +3688,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches blacklist records by query text with pagination, optional category filter, and sorting.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. ACTIVE, EXPIRED, PERMANENT), or {@code null}
@@ -3533,10 +3698,25 @@ public final class FederationClient implements AutoCloseable
      */
     public List<BlacklistRecord> searchBlacklist(String query, int page, int limit, String category, String by, String order)
     {
-        if (query.length() < 2)
-        {
-            throw new IllegalArgumentException("Search query must be at least 2 characters");
-        }
+        return searchBlacklist(query, page, limit, category, by, order, null);
+    }
+
+    /**
+     * Searches blacklist records of the given incident types by query text with pagination, optional category
+     * filter, and sorting.
+     *
+     * @param query The search query (minimum 2 non-whitespace characters)
+     * @param page  The page number (1-based)
+     * @param limit Items per page (minimum 1)
+     * @param category Optional category filter (e.g. ACTIVE, EXPIRED, PERMANENT), or {@code null}
+     * @param by The field to sort by (case-insensitive), or {@code null}
+     * @param order The sort direction ("ASC" or "DESC", case-insensitive), or {@code null}
+     * @param types Only blacklist records of one of these incident types are returned, or {@code null} for every type
+     * @return A list of matching {@link BlacklistRecord} entries
+     */
+    public List<BlacklistRecord> searchBlacklist(String query, int page, int limit, String category, String by, String order, List<IncidentType> types)
+    {
+        validateQuery(query);
 
         if (page < 1) throw new IllegalArgumentException("Page must be greater than 0");
         if (limit < 1) throw new IllegalArgumentException("Limit must be greater than 0");
@@ -3546,6 +3726,7 @@ public final class FederationClient implements AutoCloseable
         params.put("page", page);
         params.put("limit", limit);
         if (category != null) params.put("category", category);
+        if (types != null && !types.isEmpty()) params.put("type", String.join(",", concernValues(types)));
         applySortParams(params, by, order);
 
         JsonNode node = makeRequest("GET", "blacklist/search", params, 200,
@@ -4037,9 +4218,55 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
+     * Uploads an attachment by URL, the server retrieves the file from the URL itself instead of the
+     * file being uploaded by the client. Unlike {@link #uploadFileAttachmentFromUrl(String, String)},
+     * which downloads the file locally and uploads it, the URL must be reachable by the server and
+     * permitted by its configuration.
+     *
+     * @param evidenceUuid The UUID of the evidence record
+     * @param fileUrl The HTTP or HTTPS URL of the file for the server to retrieve
+     * @return The {@link UploadResult} with the server-assigned UUID and URL
+     * @throws IllegalArgumentException If the evidence UUID is empty or the URL is not a valid HTTP or HTTPS URL
+     * @throws FederationClientException If the server rejects the URL or fails to retrieve the file
+     */
+    public UploadResult uploadFileAttachmentByUrl(String evidenceUuid, String fileUrl)
+    {
+        if (evidenceUuid == null || evidenceUuid.isEmpty())
+        {
+            throw new IllegalArgumentException("Evidence UUID cannot be empty");
+        }
+
+        if (fileUrl == null || fileUrl.isEmpty())
+        {
+            throw new IllegalArgumentException("Invalid URL provided: " + fileUrl);
+        }
+
+        try
+        {
+            URI uri = new URI(fileUrl);
+            String scheme = uri.getScheme();
+            if (scheme == null || uri.getHost() == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https")))
+            {
+                throw new IllegalArgumentException("URL must be a valid HTTP or HTTPS URL: " + fileUrl);
+            }
+        }
+        catch (URISyntaxException e)
+        {
+            throw new IllegalArgumentException("URL must be a valid HTTP or HTTPS URL: " + fileUrl, e);
+        }
+
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("evidence_uuid", evidenceUuid);
+        params.put("url", fileUrl);
+
+        JsonNode node = makeRequest("POST", "attachments", params, 201, "Failed to upload attachment from URL " + fileUrl);
+        return Json.mapper().convertValue(node, UploadResult.class);
+    }
+
+    /**
      * Searches file attachments by query text with pagination.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @return A list of matching {@link FileAttachmentRecord} entries
@@ -4052,7 +4279,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches file attachments by query text with pagination and an optional category filter.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. IMAGE, DOCUMENT, ARCHIVE), or {@code null}
@@ -4066,7 +4293,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches file attachments by query text with pagination, an optional category filter, and a sort field.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. IMAGE, DOCUMENT, ARCHIVE), or {@code null}
@@ -4081,7 +4308,7 @@ public final class FederationClient implements AutoCloseable
     /**
      * Searches file attachments by query text with pagination, optional category filter, and sorting.
      *
-     * @param query The search query (minimum 2 characters)
+     * @param query The search query (minimum 2 non-whitespace characters)
      * @param page  The page number (1-based)
      * @param limit Items per page (minimum 1)
      * @param category Optional category filter (e.g. IMAGE, DOCUMENT, ARCHIVE), or {@code null}
@@ -4091,10 +4318,7 @@ public final class FederationClient implements AutoCloseable
      */
     public List<FileAttachmentRecord> searchAttachments(String query, int page, int limit, String category, String by, String order)
     {
-        if (query.length() < 2)
-        {
-            throw new IllegalArgumentException("Search query must be at least 2 characters");
-        }
+        validateQuery(query);
 
         if (page < 1) throw new IllegalArgumentException("Page must be greater than 0");
         if (limit < 1) throw new IllegalArgumentException("Limit must be greater than 0");
@@ -4112,8 +4336,8 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
-     * Applies sort parameters to the request params, normalizing case to match the server's
-     * expected format: {@code by} is lowercased and {@code order} is uppercased (e.g. "ASC"/"DESC").
+     * Applies sort parameters to the request params, normalizing case to match the format OFD 2.0
+     * defines: both {@code by} (e.g. "CREATED") and {@code order} (e.g. "ASC"/"DESC") are uppercased.
      *
      * @param params The request parameters map to modify
      * @param by The field to sort by, or {@code null}
@@ -4123,12 +4347,67 @@ public final class FederationClient implements AutoCloseable
     {
         if (by != null)
         {
-            params.put("by", by.toLowerCase(Locale.ROOT));
+            params.put("by", by.toUpperCase(Locale.ROOT));
         }
 
         if (order != null)
         {
             params.put("order", order.toUpperCase(Locale.ROOT));
         }
+    }
+
+    /**
+     * Builds the path of an entity, percent-encoding the entity identifier as a single path segment so that entity
+     * addresses (eg; {@code user@example.com}) and identifiers containing reserved characters reach the server as
+     * given, which decodes path segments once.
+     *
+     * @param entityIdentifier The entity UUID, SHA-256 identifier, or entity address
+     * @return The path {@code entities/<encoded identifier>}
+     */
+    private static String entityPath(String entityIdentifier)
+    {
+        return "entities/" + URLEncoder.encode(entityIdentifier, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    /**
+     * Validates a search query, which must contain at least two non-whitespace characters.
+     *
+     * @param query The search query
+     * @throws IllegalArgumentException If the query is null or too short
+     */
+    private static void validateQuery(String query)
+    {
+        if (query == null || query.codePoints().filter(c -> !Character.isWhitespace(c)).limit(2).count() < 2)
+        {
+            throw new IllegalArgumentException("Search query must contain at least 2 non-whitespace characters");
+        }
+    }
+
+    /**
+     * Converts concerns or incident types to their wire values.
+     *
+     * @param types The incident types
+     * @return The wire values of the incident types
+     * @throws IllegalArgumentException If the list is empty or contains null
+     */
+    private static List<String> concernValues(List<IncidentType> types)
+    {
+        if (types.isEmpty())
+        {
+            throw new IllegalArgumentException("Concerns cannot be empty");
+        }
+
+        List<String> values = new ArrayList<>(types.size());
+        for (IncidentType type : types)
+        {
+            if (type == null)
+            {
+                throw new IllegalArgumentException("Each entry must be an incident type");
+            }
+
+            values.add(type.getValue());
+        }
+
+        return values;
     }
 }
