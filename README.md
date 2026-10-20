@@ -7,8 +7,8 @@ heavily based on the original implementation, [FederationLib](https://github.com
 
 ## Features
 
-- Full implementation of the Federated Database standard, interacting with any OFD-compliant Federation server
-- Content scanning with entity resolution, classification, and risk assessment
+- Full implementation of the Federated Database standard (OFD 2.0), interacting with any OFD-compliant Federation server
+- Content scanning with entity resolution, classification, risk assessment, content types, concerns, and detections
 - Complete coverage of the server API: operators, records, evidence, reports, blacklist records, file
   attachments, audit logs, search, and server information
 - Pagination, category filters, and sorting built into every listing and search endpoint
@@ -96,7 +96,7 @@ Then add the dependency to your project using the local coordinates:
 <dependency>
     <groupId>net.nosial</groupId>
     <artifactId>jfederation</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
 </dependency>
 ```
 
@@ -158,16 +158,43 @@ System.out.printf("Server %s, API version %s%n", info.serverName(), info.apiVers
 System.out.printf("Known entities: %d, open reports: %d%n", info.knownEntities(), info.reports());
 ```
 
+A client should check the major version of the interface with `info.getApiMajorVersion()`, this release implements
+OFD 2.0. The server information also publishes what content scanning supports (`scanContentTypes()`, `concerns()`
+and `defaultConcerns()`), whether URL uploads are accepted (`isUrlUploadsAllowed()`), whether telephone entities
+are public (`publicTelephoneEntities()`) and whether content scanned anonymously may be stored
+(`collectsPublicScanContent()`). Values a newer server publishes that this client does not recognize are skipped,
+and an unrecognized incident type is read as `OTHER`.
+
 ### Content scanning
 
-Content scanners accept a `ContentInput` or a list of inputs. Each input can carry text, an
-operator note, tag, confidentiality flag, and metadata; at least one input must contain text:
+Content scanners accept a `ContentInput` or a list of inputs. Each input can carry text, a content type and its
+context, an operator note, tag, confidentiality flag, and metadata; at least one input must contain text:
 
-| Method (omit optional parameters)                          | Return Type      | Description                                  |
-|------------------------------------------------------------|------------------|----------------------------------------------|
-| `scanContent(content)`                                     | `ScannedContent` | Convenience overload for a single text input |
-| `scanContent(ContentInput, author, topK, threshold)`       | `ScannedContent` | Scans one typed content input                |
-| `scanContent(List<ContentInput>, author, topK, threshold)` | `ScannedContent` | Scans one or more typed content inputs       |
+| Method (omit optional parameters)                                    | Return Type      | Description                                      |
+|----------------------------------------------------------------------|------------------|--------------------------------------------------|
+| `scanContent(content)`                                               | `ScannedContent` | Convenience overload for a single text input     |
+| `scanContent(ContentInput, author, topK, threshold)`                 | `ScannedContent` | Scans one typed content input                    |
+| `scanContent(List<ContentInput>, author, topK, threshold)`           | `ScannedContent` | Scans one or more typed content inputs           |
+| `scanContent(List<ContentInput>, author, topK, threshold, concerns)` | `ScannedContent` | Scans with respect to the given incident types   |
+
+The content type (`TEXT`, `EMAIL`, `SMS`, `WEB_PAGE`, `HOSTNAME` or `URL`) determines the form of the text and the
+keys its context may contain, eg; `subject` and `sender` for an `EMAIL`, `region` for an `SMS`, and the required `url`
+for a `WEB_PAGE`. Context is an assertion of the client, a detection whose `verified()` is false relies on it. Only the
+requested concerns (the server's `defaultConcerns()` when none are given, which exclude `ADVERTISING` and `TRACKING`)
+affect the classification, risk score, suggested action, and `detections()` of the result:
+
+```java
+ScannedContent scan = client.scanContent(List.of(
+        new ContentInput("Your account is locked, verify it now", ContentType.EMAIL,
+            Map.of("subject", "Account locked", "sender", "security@example.com")),
+        new ContentInput("https://login.example.com/verify", ContentType.URL)),
+    null, null, null, List.of(IncidentType.PHISHING, IncidentType.SPAM));
+
+for (Detection detection : scan.detections()) {
+    System.out.printf("%s in input %d by %s (verified: %b)%n",
+        detection.concern(), detection.contentIndex(), detection.source(), detection.verified());
+}
+```
 
 Here's an example of scanning content and inspecting the classification result:
 
@@ -184,8 +211,8 @@ System.out.printf("Classification %s with %.1f%% confidence, detected language: 
 
 ### Searching records
 
-The global search queries all record types with an optional type filter, the search query must be at
-least 2 characters:
+The global search queries all record types with an optional type filter, the search query must contain
+at least 2 non-whitespace characters:
 
 ```java
 // Search all record types
@@ -213,9 +240,13 @@ by an operator, and each operator carries granular permissions dictating what th
 | `updateOperatorName(uuid, name)`                                            | Updates the display name of an operator                                              |
 | `deleteOperator(uuid)`                                                      | Deletes an operator                                                                  |
 | `disableOperator(uuid)` / `enableOperator(uuid)`                            | Disables / enables an operator account                                               |
+| `updateOperatorPermissions(uuid, client, management, operator)`             | Grants or revokes permission groups, `null` leaves a group unchanged                 |
 | `setOperatorPermissions(uuid, enabled)`                                     | Sets whether the operator has operator-level permissions                             |
 | `setClientPermissions(uuid, enabled)`                                       | Sets whether the operator has client-level permissions                               |
 | `setManagementPermissions(uuid, enabled)`                                   | Sets whether the operator has management-level permissions                           |
+| `updateOperatorConfiguration(uuid, autoAssignReports, automated, isBot)`    | Changes the settings of an operator, `null` leaves a setting unchanged               |
+| `setAutoAssign(uuid, enabled)`                                              | Opts the operator in to (or out of) the automatic assignment of every report         |
+| `setBot(uuid, isBot)`                                                       | Sets whether the operator is a bot, whose evidence and reports are automated         |
 | `generateAccessToken(update)`                                               | Refreshes the current operator's token, optionally updating the client               |
 | `generateOperatorAccessToken(uuid)`                                         | Refreshes another operator's token                                                   |
 | `listOperatorAuditLogs(uuid, ...)`                                          | Lists the audit log entries of an operator                                           |
@@ -233,6 +264,21 @@ System.out.println("Operator UUID: " + created.uuid());
 String token = created.accessToken();
 
 String refreshed = client.generateAccessToken(true); // refresh and update this client
+```
+
+An `OperatorRecord` carries its permission groups in `permissions()` and its settings in `configuration()`.
+Management permissions inherit client permissions, so revoking client permissions from an operator that keeps
+management permissions is rejected with HTTP 409. The configuration is only disclosed to the operator itself and to
+operators with operator permissions, anyone else receives `null`; an operator may change its own configuration:
+
+```java
+OperatorRecord operator = client.getOperator(uuid);
+if (operator.hasManagementPermissions() && operator.isConfigurationVisible()) {
+    System.out.println("Bot: " + operator.isBot() + ", auto assigned: " + operator.isAutoAssigned());
+}
+
+// Opt in to automated reports only
+client.updateOperatorConfiguration(uuid, false, true, null);
 ```
 
 ### Entities
@@ -259,8 +305,13 @@ identifier present in scanned content:
 | `listEntityEvidenceRecords(identifier, ...)`                       | Lists the evidence submitted against an entity                    |
 | `listEntityReports(identifier, ...)`                               | Lists the reports submitted against an entity                     |
 
-Record listings of entities are `EntityRecord` objects carrying the identifier, risk score,
-classification flag, relationship hierarchy, and metadata of the entity.
+Record listings of entities are `EntityRecord` objects carrying the identifier, SHA-256 identifier (`hash()`),
+reputation, relationship hierarchy, and metadata of the entity. Entity identifiers are percent-encoded in request
+paths, so addresses such as `user+tag@example.com` can be passed as they are.
+
+A telephone number is the entity `<E.164 number>@e164.arpa`, its local part is the international number without `+`
+or separators (`EntityRecord.isTelephone()`). Unless the server publishes `publicTelephoneEntities()`, unauthenticated
+requests only see a telephone entity they identify by its address or SHA-256 identifier.
 
 ### Evidence
 
@@ -268,22 +319,25 @@ Evidence records are the supporting data attached to entities, either when submi
 manually by operators, and can hold text content, attachments, tags, notes, and confidentiality
 flags:
 
-| Method                                                                | Description                                    |
-|-----------------------------------------------------------------------|------------------------------------------------|
-| `submitEvidence(entityIdentifier)`                                    | Creates an empty evidence record for an entity |
-| `submitEvidence(identifier, text, note, tag, confidential, metadata)` | Submits evidence with all optional fields      |
-| `listEvidence(page, limit, includeConfidential, category, by, order)` | Lists evidence records                         |
-| `searchEvidence(query, page, limit, category, by, order)`             | Searches evidence records                      |
-| `getEvidenceRecord(uuid)`                                             | Returns a single evidence record               |
-| `getEvidenceAttachments(uuid)`                                        | Lists the attachments of an evidence record    |
-| `updateEvidenceConfidentiality(uuid, confidential)`                   | Updates the confidentiality flag of evidence   |
-| `updateEvidenceTag(uuid, tag)`                                        | Updates the tag of evidence                    |
-| `addEvidenceToReport(evidenceUuid, reportUuid)`                       | Attaches evidence to a report                  |
-| `deleteEvidence(uuid)`                                                | Deletes an evidence record                     |
+| Method                                                                | Description                                      |
+|-----------------------------------------------------------------------|--------------------------------------------------|
+| `submitEvidence(entityIdentifier)`                                    | Creates an empty evidence record for an entity   |
+| `submitEvidence(identifier, text, note, tag, confidential, metadata)` | Submits evidence with the common fields          |
+| `submitEvidence(..., classification, contentType, context)`           | Submits evidence with a content type and context |
+| `listEvidence(page, limit, includeConfidential, category, by, order)` | Lists evidence records                           |
+| `searchEvidence(query, page, limit, category, by, order)`             | Searches evidence records                        |
+| `getEvidenceRecord(uuid)`                                             | Returns a single evidence record                 |
+| `getEvidenceAttachments(uuid)`                                        | Lists the attachments of an evidence record      |
+| `updateEvidenceConfidentiality(uuid, confidential)`                   | Updates the confidentiality flag of evidence     |
+| `updateEvidenceTag(uuid, tag)`                                        | Updates the tag of evidence                      |
+| `addEvidenceToReport(evidenceUuid, reportUuid)`                       | Attaches evidence to a report                    |
+| `deleteEvidence(uuid)`                                                | Deletes an evidence record                       |
 
 Confidential evidence is hidden from unauthenticated clients by default, listing endpoints
 support an `includeConfidential` parameter to include them when the operator has the appropriate
-permissions.
+permissions. Evidence the server creates itself or a bot operator submits is `automated()` and created confidential,
+the `AUTOMATED` and `NOT_AUTOMATED` categories select it, and evidence about a telephone entity is always
+confidential.
 
 ### Reports
 
@@ -310,18 +364,20 @@ against an evidence record.
 ### Blacklist records
 
 Blacklist records are the server's mitigation mechanism, an operator can condemn an entity to the
-blacklist of the server with an incident type and a report backing the decision:
+blacklist of the server with an incident type and, optionally, a report backing the decision. The report may
+concern another entity, eg; the domain a reported account advertised:
 
-| Method                                                                  | Description                                                            |
-|-------------------------------------------------------------------------|------------------------------------------------------------------------|
-| `blacklistEntity(identifier, reportUuid, type)`                         | Blacklists an entity permanently                                       |
-| `blacklistEntity(identifier, reportUuid, type, expires)`                | Blacklists an entity with an expiration timestamp (Unix epoch seconds) |
-| `listBlacklistRecords(page, limit, includeLifted, category, by, order)` | Lists blacklist entries                                                |
-| `searchBlacklist(query, page, limit, category, by, order)`              | Searches blacklist entries                                             |
-| `getBlacklistRecord(uuid)`                                              | Returns a single blacklist record                                      |
-| `liftBlacklistRecord(uuid)`                                             | Lifts the blacklist entry of an entity                                 |
-| `extendBlacklistRecord(uuid, seconds)`                                  | Extends the blacklist of an entity by the given seconds                |
-| `deleteBlacklistRecord(uuid)`                                           | Deletes a blacklist record                                             |
+| Method                                                                             | Description                                                            |
+|------------------------------------------------------------------------------------|------------------------------------------------------------------------|
+| `blacklistEntity(identifier, type)` / `blacklistEntity(identifier, type, expires)` | Blacklists an entity without a supporting report                       |
+| `blacklistEntity(identifier, reportUuid, type)`                                    | Blacklists an entity permanently                                       |
+| `blacklistEntity(identifier, reportUuid, type, expires)`                           | Blacklists an entity with an expiration timestamp (Unix epoch seconds) |
+| `listBlacklistRecords(page, limit, includeLifted, category, by, order, types)`     | Lists blacklist entries, optionally of the given incident types only   |
+| `searchBlacklist(query, page, limit, category, by, order, types)`                  | Searches blacklist entries, optionally of the given incident types     |
+| `getBlacklistRecord(uuid)`                                                         | Returns a single blacklist record                                      |
+| `liftBlacklistRecord(uuid)`                                                        | Lifts the blacklist entry of an entity                                 |
+| `extendBlacklistRecord(uuid, seconds)`                                             | Extends the blacklist of an entity by the given seconds                |
+| `deleteBlacklistRecord(uuid)`                                                      | Deletes a blacklist record                                             |
 
 ### File attachments
 
@@ -333,6 +389,7 @@ Evidence records support file attachments with uploads from disk or URL, and not
 | `uploadFileAttachment(evidenceUuid, localFilePath, fileName)`     | Uploads a local file attachment with a custom name |
 | `uploadFileAttachmentFromUrl(evidenceUuid, fileUrl)`              | Uploads an attachment from a reachable URL         |
 | `uploadFileAttachmentFromUrl(evidenceUuid, fileUrl, maxFileSize)` | Uploads an attachment from a URL with a size limit |
+| `uploadFileAttachmentByUrl(evidenceUuid, fileUrl)`                | Server retrieves the attachment from a URL         |
 | `uploadNoteAttachment(evidenceUuid, fileName, content)`           | Uploads a plain-text note attachment               |
 | `downloadAttachment(attachmentUuid, directoryPath)`               | Downloads an attachment into the given directory   |
 | `getAttachmentInfo(uuid)`                                         | Returns the metadata of an attachment              |
@@ -343,11 +400,15 @@ Evidence records support file attachments with uploads from disk or URL, and not
 File uploads default to a maximum file size of 50 MB, matching the FederationLib client default, the
 limit can be raised per-request for URL uploads.
 
+`uploadFileAttachmentFromUrl` downloads the file locally and uploads it, while `uploadFileAttachmentByUrl`
+sends only the URL and the server retrieves the file itself. The URL must then be reachable by the server, and
+servers reject URLs that resolve to private, loopback or other non-public addresses unless configured otherwise.
+
 ### Pagination and sorting
 
 Every listing and search endpoint accepts the same pagination and sorting arguments: `page` (1-based)
 and `limit` (minimum 1), followed by an optional category filter, `by` (whatever field to sort by,
-case-insensitive), and `order` (`"ASC"` or `"DESC"`). Every combination has a matching overload,
+case-insensitive, sent uppercase as OFD 2.0 defines), and `order` (`"ASC"` or `"DESC"`). Every combination has a matching overload,
 so the calling convention of each method grows gradually, for example:
 
 ```java
@@ -357,8 +418,8 @@ List<EntityRecord> entities = client.listEntities();
 // Explicit pagination
 List<EntityRecord> entities = client.listEntities(2, 50);
 
-// Pagination with a category filter, sorted by risk descending
-List<EntityRecord> entities = client.listEntities(2, 50, "HIGH_RISK", "risk_score", "DESC");
+// Pagination with a category filter, sorted by reputation descending
+List<EntityRecord> entities = client.listEntities(2, 50, "WITH_RELATIONSHIP", "REPUTATION", "DESC");
 ```
 
 None of the argument orderings change between endpoints, once the pattern is memorized the entire
