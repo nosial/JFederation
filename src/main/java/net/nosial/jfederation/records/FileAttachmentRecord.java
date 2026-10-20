@@ -6,7 +6,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Metadata about a file attachment stored in the Federation server.
  *
  * @param uuid the unique attachment identifier
- * @param evidenceUuid the UUID of the evidence record this attachment belongs to
+ * @param evidenceUuid the UUID of the evidence record this attachment belongs to, or {@code null} when the server
+ *                     reports no associated evidence record
  * @param fileName the original file name
  * @param fileSize the file size in bytes
  * @param fileMime the MIME type of the file
@@ -19,4 +20,15 @@ public record FileAttachmentRecord(
     @JsonProperty("file_size") long fileSize,
     @JsonProperty("file_mime") String fileMime,
     @JsonProperty("created") long created
-) { }
+) {
+    /**
+     * Compact constructor, an empty evidence UUID reported by a server means no associated evidence record.
+     */
+    public FileAttachmentRecord
+    {
+        if (evidenceUuid != null && evidenceUuid.isEmpty())
+        {
+            evidenceUuid = null;
+        }
+    }
+}
