@@ -12,6 +12,7 @@ import net.nosial.jfederation.enums.AuditLogType;
  * @param blacklistUuid the UUID of the affected blacklist record, or {@code null}
  * @param evidenceUuid the UUID of the affected evidence record, or {@code null}
  * @param fileAttachmentUuid the UUID of the affected file attachment, or {@code null}
+ * @param reportUuid the UUID of the affected report, or {@code null}
  * @param type the type of audit event
  * @param message a human-readable description of the event
  * @param timestamp the event timestamp (Unix epoch seconds)
@@ -23,6 +24,7 @@ public record AuditLog(
     @JsonProperty("blacklist") String blacklistUuid,
     @JsonProperty("evidence") String evidenceUuid,
     @JsonProperty("file_attachment") String fileAttachmentUuid,
+    @JsonProperty("report") String reportUuid,
     @JsonProperty("type") AuditLogType type,
     @JsonProperty("message") String message,
     @JsonProperty("timestamp") long timestamp)
