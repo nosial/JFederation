@@ -1,4 +1,4 @@
-# JFederation
+# <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icon/jfederation_light.svg"><img src="assets/icon/jfederation_dark.svg" alt="JFederation" width="32" height="32"></picture> JFederation
 
 JFederation is a Java client library for the Federated Database protocol, providing a complete client-side implementation
 of the standard for Java applications. The implementation is based on the
@@ -7,7 +7,7 @@ heavily based on the original implementation, [FederationLib](https://github.com
 
 ## Features
 
-- Full implementation of the Federated Database standard (OFD 2.0), interacting with any OFD-compliant Federation server
+- Full implementation of the Federated Database standard (OFD 2.1), interacting with any OFD-compliant Federation server
 - Content scanning with entity resolution, classification, risk assessment, content types, concerns, and detections
 - Complete coverage of the server API: operators, records, evidence, reports, blacklist records, file
   attachments, audit logs, search, and server information
@@ -159,16 +159,24 @@ System.out.printf("Known entities: %d, open reports: %d%n", info.knownEntities()
 ```
 
 A client should check the major version of the interface with `info.getApiMajorVersion()`, this release implements
-OFD 2.0. The server information also publishes what content scanning supports (`scanContentTypes()`, `concerns()`
-and `defaultConcerns()`), whether URL uploads are accepted (`isUrlUploadsAllowed()`), whether telephone entities
-are public (`publicTelephoneEntities()`) and whether content scanned anonymously may be stored
-(`collectsPublicScanContent()`). Values a newer server publishes that this client does not recognize are skipped,
-and an unrecognized incident type is read as `OTHER`.
+OFD 2.1. The server information also publishes what content scanning supports (`scanContentTypes()`, `concerns()`,
+`defaultConcerns()`, and the file limits `maxScanFiles()` and `maxScanFileSize()`), whether URL uploads are accepted
+(`isUrlUploadsAllowed()`), whether telephone entities are public (`publicTelephoneEntities()`) and whether content
+scanned anonymously may be stored (`collectsPublicScanContent()`). Values a newer server publishes that this client
+does not recognize are skipped, and an unrecognized incident type is read as `OTHER`.
+
+Routes the client has no method for, such as a route provided by a plugin of the server, are reached with
+`request(method, path, parameters)`, authenticated with the client's access token if it has one. The parameters are
+sent as the query string of a `GET` request and as a JSON body otherwise, and the response is returned as a `JsonNode`:
+
+```java
+JsonNode status = client.request("GET", "my-plugin/status", null);
+```
 
 ### Content scanning
 
 Content scanners accept a `ContentInput` or a list of inputs. Each input can carry text, a content type and its
-context, an operator note, tag, confidentiality flag, and metadata; at least one input must contain text:
+context, an operator note, tag, confidentiality flag, and metadata; at least one input must contain text or files:
 
 | Method (omit optional parameters)                                    | Return Type      | Description                                      |
 |----------------------------------------------------------------------|------------------|--------------------------------------------------|
@@ -176,6 +184,8 @@ context, an operator note, tag, confidentiality flag, and metadata; at least one
 | `scanContent(ContentInput, author, topK, threshold)`                 | `ScannedContent` | Scans one typed content input                    |
 | `scanContent(List<ContentInput>, author, topK, threshold)`           | `ScannedContent` | Scans one or more typed content inputs           |
 | `scanContent(List<ContentInput>, author, topK, threshold, concerns)` | `ScannedContent` | Scans with respect to the given incident types   |
+| `scanContent(ContentInput, author, files)`                           | `ScannedContent` | Scans one input together with its files          |
+| `scanContent(List<ContentInput>, …, concerns, files)`                | `ScannedContent` | Scans inputs with their files, keyed by index    |
 
 The content type (`TEXT`, `EMAIL`, `SMS`, `WEB_PAGE`, `HOSTNAME` or `URL`) determines the form of the text and the
 keys its context may contain, eg; `subject` and `sender` for an `EMAIL`, `region` for an `SMS`, and the required `url`
@@ -194,6 +204,18 @@ for (Detection detection : scan.detections()) {
     System.out.printf("%s in input %d by %s (verified: %b)%n",
         detection.concern(), detection.contentIndex(), detection.source(), detection.verified());
 }
+```
+
+Inputs may carry files (`ScanFile`), such as the images of a message, which are sent in a `multipart/form-data`
+request. Every server accepts files, but one that does not scan them, or does not scan them for this client (eg;
+without authentication), ignores them and scans the rest of the content. An input with files may have no text, a
+server that interprets none of its files returns the neutral risk score of `50` for it, and a detection that relates to
+a file names it with `fileIndex()`:
+
+```java
+ScannedContent scan = client.scanContent(
+    new ContentInput("Your parcel is on hold", ContentType.SMS, null), "15550123456@e164.arpa",
+    List.of(ScanFile.of(Path.of("parcel.jpg"))));
 ```
 
 Here's an example of scanning content and inspecting the classification result:
