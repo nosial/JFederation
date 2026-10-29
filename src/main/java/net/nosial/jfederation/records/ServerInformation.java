@@ -39,6 +39,10 @@ import java.util.Objects;
  * @param allowUrlUploads whether the server accepts URL uploads, or {@code null} when the server does not publish
  *                        it; see {@link #isUrlUploadsAllowed()}
  * @param scanContentTypes the content types content scanning interprets according to their type
+ * @param maxScanFiles the maximum number of files a scan request may carry, 0 when the server ignores the files of
+ *                     scan requests or does not publish it
+ * @param maxScanFileSize the maximum size in bytes of each file a scan request may carry, 0 when the server ignores
+ *                        the files of scan requests or does not publish it
  * @param concerns the concerns the server can assess
  * @param defaultConcerns the concerns the server assesses when a request names none
  * @param auditLogRecords total audit log record count
@@ -69,6 +73,8 @@ public record ServerInformation(
     @JsonProperty("allow_illegal_content") Boolean allowIllegalContent,
     @JsonProperty("allow_url_uploads") Boolean allowUrlUploads,
     @JsonProperty("scan_content_types") List<ContentType> scanContentTypes,
+    @JsonProperty("max_scan_files") int maxScanFiles,
+    @JsonProperty("max_scan_file_size") long maxScanFileSize,
     @JsonProperty("concerns") List<IncidentType> concerns,
     @JsonProperty("default_concerns") List<IncidentType> defaultConcerns,
     @JsonProperty("public_audit_logs_visibility") List<AuditLogType> publicAuditLogsVisibility,
