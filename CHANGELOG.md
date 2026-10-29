@@ -5,9 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.2] - Ongoing
+## [2.1.0] - Ongoing
 
-This is an ongoing update
+This is an ongoing update, it brings JFederation up to date with OFD 2.1
+
+### Added
+- Scan files with the content they belong to, such as the images of a message, with
+  `scanContent(ContentInput, author, files)` and `scanContent(List<ContentInput>, author, topK, threshold, concerns,
+  files)`. The files (`ScanFile`) are sent in a `multipart/form-data` request and an input with files may have no text.
+  Every server accepts files, one that does not scan them for the client ignores them
+- `ServerInformation` publishes the file limits of scanning, `maxScanFiles()` and `maxScanFileSize()`
+- `Detection` relates a detection to a file of its content input with `fileIndex()`
+- `request(method, path, parameters)` sends a request to a route the client has no method for, such as a route
+  provided by a plugin of the server, like `FederationClient::request()` of FederationLib
+
+### Fixed
+- `downloadAttachment()` includes the error message of the server in the `FederationClientException` it throws for a
+  failed download, along with the HTTP status code
 
 
 
