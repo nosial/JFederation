@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0] - Ongoing
+## [2.1.0] - 2026-10-29
 
-This is an ongoing update, it brings JFederation up to date with OFD 2.1
+This update brings JFederation up to date with OFD 2.1
 
 ### Added
 - Scan files with the content they belong to, such as the images of a message, with
