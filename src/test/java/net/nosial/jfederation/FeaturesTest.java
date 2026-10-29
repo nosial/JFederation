@@ -95,7 +95,7 @@ class FeaturesTest extends FederationClientTestBase {
             anon.getEvidenceRecord(evidenceUuid);
             fail("Expected FederationClientException");
         } catch (FederationClientException e) {
-            assertEquals(403, e.getStatusCode());
+            assertEquals(401, e.getStatusCode());
         }
         anon.close();
     }

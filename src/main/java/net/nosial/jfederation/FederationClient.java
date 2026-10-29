@@ -765,7 +765,7 @@ public final class FederationClient implements AutoCloseable
                 throw new IllegalArgumentException("Files are given for evidence index " + entry.getKey() + " which does not exist");
             }
 
-            if (entry.getValue() == null || entry.getValue().isEmpty() || entry.getValue().contains(null))
+            if (entry.getValue() == null || entry.getValue().isEmpty() || entry.getValue().stream().anyMatch(Objects::isNull))
             {
                 throw new IllegalArgumentException("The files of evidence index " + entry.getKey() + " must be a non-empty list of files");
             }

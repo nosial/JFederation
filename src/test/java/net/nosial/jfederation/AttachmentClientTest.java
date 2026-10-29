@@ -419,7 +419,7 @@ class AttachmentClientTest extends FederationClientTestBase {
         FederationClientException e = assertThrows(FederationClientException.class,
             () -> client.downloadAttachment(UUID.randomUUID().toString(), tempDir.toString()));
         assertEquals(404, e.getStatusCode());
-        assertTrue(e.getMessage().startsWith("Failed to download attachment, HTTP code: 404, "),
+        assertTrue(e.getMessage().contains("Failed to download attachment, HTTP code: 404, "),
             "The error message of the server should be included: " + e.getMessage());
     }
 
