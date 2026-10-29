@@ -375,6 +375,35 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
+     * Sends a request to a route the client has no method for, such as a route provided by a plugin of the server,
+     * authenticated with the client's access token if it has one.
+     *
+     * @param method The HTTP method: GET, POST, PUT, PATCH or DELETE
+     * @param path The path of the route, relative to the endpoint (eg; "my-plugin/status")
+     * @param parameters The parameters, sent as the query string of a GET request and as a JSON body otherwise, or
+     *                   {@code null}
+     * @return The JSON response of the route as a {@link JsonNode} tree
+     * @throws IllegalArgumentException if the method or the path is invalid
+     * @throws FederationClientException if the request fails or the server responds with an error
+     */
+    public JsonNode request(String method, String path, Map<String, Object> parameters)
+    {
+        if (method == null || !List.of("GET", "POST", "PUT", "PATCH", "DELETE").contains(method.toUpperCase()))
+        {
+            throw new IllegalArgumentException("The method must be one of GET, POST, PUT, PATCH or DELETE");
+        }
+
+        path = path == null ? "" : path.replaceAll("^/+|/+$", "");
+        if (path.isEmpty() || path.contains("://"))
+        {
+            throw new IllegalArgumentException("The path must be a non-empty path relative to the endpoint");
+        }
+
+        method = method.toUpperCase();
+        return makeRequest(method, path, parameters, 200, "Failed to request " + method + " /" + path);
+    }
+
+    /**
      * Searches across all record types with optional type filter and pagination.
      *
      * @param query The search query (minimum 2 non-whitespace characters)
@@ -669,6 +698,121 @@ public final class FederationClient implements AutoCloseable
 
         JsonNode node = makeRequest("POST", "scan", params, 200, "Failed to scan content");
         return Json.mapper().convertValue(node, ScannedContent.class);
+    }
+
+    /**
+     * Scans a content input together with its files, such as the images of a message (OFD 2.1 "Scanned files"). A
+     * server that does not scan files, or does not scan them for this client, ignores them.
+     *
+     * @param evidence The content input to scan, which may have no text content when files are given
+     * @param author The author entity identifier, or {@code null}
+     * @param files The files of the content input, or {@code null}
+     * @return A {@link ScannedContent} with the scan results
+     * @throws IllegalArgumentException if evidence is null, or it has neither text content nor files
+     */
+    public ScannedContent scanContent(ContentInput evidence, String author, List<ScanFile> files)
+    {
+        return scanContent(List.of(evidence), author, null, null, null, files == null || files.isEmpty() ? null : Map.of(0, files));
+    }
+
+    /**
+     * Scans one or more content inputs together with their files, such as the images of a message (OFD 2.1 "Scanned
+     * files"). The request is sent as a {@code multipart/form-data} body. Every server accepts files, a server that
+     * does not scan them, or does not scan them for this client, ignores them and scans the rest of the content, so
+     * the result never depends on knowing whether files are scanned. A content input with files may have no text
+     * content. A server that scans files rejects a request whose files exceed
+     * {@link ServerInformation#maxScanFiles()} or {@link ServerInformation#maxScanFileSize()}.
+     *
+     * @param evidence The content inputs to scan (must not be empty)
+     * @param author The author entity identifier, or {@code null}; a telephone number is given as a telephone entity
+     *               in canonical form ({@code <E.164 number>@e164.arpa})
+     * @param topK The maximum number of entity matches to return, or {@code null}
+     * @param threshold The classification confidence threshold, or {@code null}
+     * @param concerns The incident types to assess, which must be among the concerns the server publishes, or
+     *                 {@code null} for the server's default concerns
+     * @param files The files of each content input keyed by its index in {@code evidence}, or {@code null}
+     * @return A {@link ScannedContent} with the scan results, whose detections relate to a file by
+     *         {@link Detection#fileIndex()}
+     * @throws IllegalArgumentException if evidence is empty or contains null, the files name an index outside the
+     *                                  evidence or carry an empty list, the concerns are empty, or no input contains
+     *                                  text content or files
+     */
+    public ScannedContent scanContent(List<ContentInput> evidence, String author, Integer topK, Float threshold,
+                                      List<IncidentType> concerns, Map<Integer, List<ScanFile>> files)
+    {
+        if (files == null || files.isEmpty())
+        {
+            return scanContent(evidence, author, topK, threshold, concerns);
+        }
+
+        if (evidence == null || evidence.isEmpty())
+        {
+            throw new IllegalArgumentException("Evidence cannot be empty");
+        }
+
+        for (ContentInput item : evidence)
+        {
+            if (item == null)
+            {
+                throw new IllegalArgumentException("Evidence items cannot be null");
+            }
+        }
+
+        for (Map.Entry<Integer, List<ScanFile>> entry : files.entrySet())
+        {
+            if (entry.getKey() == null || entry.getKey() < 0 || entry.getKey() >= evidence.size())
+            {
+                throw new IllegalArgumentException("Files are given for evidence index " + entry.getKey() + " which does not exist");
+            }
+
+            if (entry.getValue() == null || entry.getValue().isEmpty() || entry.getValue().contains(null))
+            {
+                throw new IllegalArgumentException("The files of evidence index " + entry.getKey() + " must be a non-empty list of files");
+            }
+        }
+
+        // Each content input names the parts that carry its files in its files member, the evidence and concerns
+        // parts carry the JSON text of their values and the other parameters their text
+        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
+        List<Map<String, Object>> items = new ArrayList<>();
+        Map<String, ScanFile> parts = new LinkedHashMap<>();
+        for (int index = 0; index < evidence.size(); index++)
+        {
+            Map<String, Object> item = new LinkedHashMap<>(Json.mapper().convertValue(evidence.get(index), new TypeReference<Map<String, Object>>() {}));
+            List<ScanFile> itemFiles = files.get(index);
+            if (itemFiles != null)
+            {
+                List<String> names = new ArrayList<>();
+                for (int fileIndex = 0; fileIndex < itemFiles.size(); fileIndex++)
+                {
+                    String name = "file_" + index + "_" + fileIndex;
+                    names.add(name);
+                    parts.put(name, itemFiles.get(fileIndex));
+                }
+                item.put("files", names);
+            }
+            items.add(item);
+        }
+
+        multipartBuilder.addFormDataPart("evidence", null,
+            RequestBody.create(Json.writeValueAsString(items.size() == 1 ? items.getFirst() : items), JSON_MEDIA_TYPE));
+        if (author != null) multipartBuilder.addFormDataPart("author", author);
+        if (topK != null) multipartBuilder.addFormDataPart("top_k", String.valueOf(topK));
+        if (threshold != null) multipartBuilder.addFormDataPart("threshold", String.valueOf(threshold));
+        if (concerns != null)
+        {
+            multipartBuilder.addFormDataPart("concerns", null,
+                RequestBody.create(Json.writeValueAsString(concernValues(concerns)), JSON_MEDIA_TYPE));
+        }
+
+        MediaType octetStream = MediaType.parse("application/octet-stream");
+        parts.forEach((name, file) -> multipartBuilder.addFormDataPart(name,
+            file.fileName() != null && !file.fileName().isBlank() ? file.fileName() : name,
+            RequestBody.create(file.content(), octetStream)));
+
+        log.debug("POST Request to {}/scan with {} file(s)", endpoint, parts.size());
+        Request request = buildRequest("scan").post(multipartBuilder.build()).build();
+        return Json.mapper().convertValue(executeRequest(request, new int[]{200}, "Failed to scan content"), ScannedContent.class);
     }
 
     /**
@@ -3892,7 +4036,21 @@ public final class FederationClient implements AutoCloseable
             int statusCode = response.code();
             if (statusCode != 200)
             {
-                throw new FederationClientException("Failed to download attachment, HTTP code: " + statusCode, statusCode);
+                String msg = "Failed to download attachment, HTTP code: " + statusCode;
+                try
+                {
+                    JsonNode errorNode = Json.readTree(response.body().string());
+                    if (errorNode.has("message") && errorNode.get("message").isString())
+                    {
+                        msg += ", " + errorNode.get("message").asString();
+                    }
+                }
+                catch (Exception e)
+                {
+                    log.debug("Failed to parse attachment download error response JSON", e);
+                }
+
+                throw new FederationClientException(msg, statusCode);
             }
 
             String filename = attachmentUuid;
