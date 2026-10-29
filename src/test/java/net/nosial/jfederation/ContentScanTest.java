@@ -827,4 +827,94 @@ class ContentScanTest extends FederationClientTestBase {
     void testScanContentRejectsEmptyConcerns() {
         assertThrows(IllegalArgumentException.class, () -> client.scanContent(new ContentInput("text"), null, null, null, List.of()));
     }
+
+    /**
+     * A 1x1 PNG image
+     */
+    private static final byte[] PNG = java.util.Base64.getDecoder().decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
+
+    @Test
+    void testScanContentWithFile() {
+        ScannedContent result = client.scanContent(new ContentInput("Your parcel is on hold"), null,
+            List.of(new ScanFile("parcel.png", PNG)));
+
+        assertTrue(result.riskScore() >= 0.0 && result.riskScore() <= 100.0);
+    }
+
+    @Test
+    void testFileOnlyContentKeepsTheNeutralRiskScore() {
+        ScannedContent result = client.scanContent(new ContentInput((String) null), null, List.of(new ScanFile(PNG)));
+
+        assertEquals(50.0, result.riskScore(), 0.0001);
+        assertNull(result.suggestedAction());
+    }
+
+    @Test
+    void testFilesOfSeveralContentInputs() {
+        ScannedContent result = client.scanContent(List.of(new ContentInput("First message"), new ContentInput((String) null)),
+            null, null, null, List.of(IncidentType.SPAM), Map.of(
+                0, List.of(new ScanFile(PNG), new ScanFile(PNG)),
+                1, List.of(new ScanFile(PNG))));
+
+        assertTrue(result.detections().stream().allMatch(d -> d.concern() == IncidentType.SPAM));
+    }
+
+    @Test
+    void testDetectionOfTheTextHasNoFileIndex() {
+        String host = "scanfiles-" + UUID.randomUUID().toString().substring(0, 8) + ".com";
+        String entityUuid = client.pushEntity(host);
+        createdEntities.add(entityUuid);
+        createdBlacklistRecords.add(client.blacklistEntity(entityUuid, null, IncidentType.SPAM, (int) (System.currentTimeMillis() / 1000) + 3600));
+
+        ScannedContent result = client.scanContent(new ContentInput("Visit " + host), null, List.of(new ScanFile(PNG)));
+
+        assertFalse(result.detections().isEmpty());
+        assertTrue(result.detections().stream().allMatch(d -> d.fileIndex() == null));
+    }
+
+    @Test
+    void testUnauthenticatedFilesAreIgnored() {
+        ScannedContent result = createAnonymousClient().scanContent(new ContentInput((String) null), null, List.of(new ScanFile(PNG)));
+
+        assertEquals(50.0, result.riskScore(), 0.0001);
+    }
+
+    @Test
+    void testScanContentRejectsTooManyFiles() {
+        List<ScanFile> files = java.util.stream.IntStream.range(0, client.getServerInformation().maxScanFiles() + 1)
+            .mapToObj(i -> new ScanFile(PNG)).toList();
+
+        FederationClientException e = assertThrows(FederationClientException.class,
+            () -> client.scanContent(new ContentInput("Hello"), null, files));
+        assertEquals(400, e.getStatusCode());
+    }
+
+    @Test
+    void testScanContentRejectsFilesOfUnknownContentInput() {
+        assertThrows(IllegalArgumentException.class, () -> client.scanContent(List.of(new ContentInput("Hello")),
+            null, null, null, null, Map.of(1, List.of(new ScanFile(PNG)))));
+        assertThrows(IllegalArgumentException.class, () -> client.scanContent(List.of(new ContentInput("Hello")),
+            null, null, null, null, Map.of(0, List.of())));
+    }
+
+    @Test
+    void testScanFileRejectsEmptyContent() {
+        assertThrows(IllegalArgumentException.class, () -> new ScanFile(new byte[0]));
+    }
+
+    @Test
+    void testScanContentWithoutTextOrFilesIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> client.scanContent(new ContentInput((String) null), null, List.of()));
+    }
+
+    @Test
+    void testDetectionDeserializesFileIndex() {
+        Detection detection = Json.readValue("""
+            {"concern": "SCAM", "content_index": 0, "file_index": 2, "entity": null, "source": "qr", "confidence": null, "verified": true}
+            """, Detection.class);
+
+        assertEquals(2, detection.fileIndex());
+        assertNull(Json.readValue("{\"concern\": \"SPAM\", \"content_index\": 0}", Detection.class).fileIndex());
+    }
 }

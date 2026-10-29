@@ -413,6 +413,17 @@ class AttachmentClientTest extends FederationClientTestBase {
     }
 
     @Test
+    void testDownloadUnknownAttachmentThrowsNotFound() throws Exception {
+        Path tempDir = Files.createTempDirectory("fed_download_");
+        createdTempFiles.add(tempDir);
+        FederationClientException e = assertThrows(FederationClientException.class,
+            () -> client.downloadAttachment(UUID.randomUUID().toString(), tempDir.toString()));
+        assertEquals(404, e.getStatusCode());
+        assertTrue(e.getMessage().startsWith("Failed to download attachment, HTTP code: 404, "),
+            "The error message of the server should be included: " + e.getMessage());
+    }
+
+    @Test
     void testMultipleAttachmentsPerEvidence() {
         String entityUuid = client.pushEntity("multiple-attachments-test-" + UUID.randomUUID().toString().substring(0, 8) + ".com", "multiple_attachments_user");
         createdEntities.add(entityUuid);

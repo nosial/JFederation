@@ -4,6 +4,7 @@ import net.nosial.jfederation.classes.Json;
 import net.nosial.jfederation.enums.ContentType;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.enums.RecordType;
+import net.nosial.jfederation.exceptions.FederationClientException;
 import net.nosial.jfederation.records.ServerInformation;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -119,6 +120,27 @@ class ServerInformationTest extends FederationClientTestBase {
     }
 
     @Test
+    void testRequestReturnsRouteResponse() {
+        JsonNode info = client.request("get", "/info/", null);
+        assertEquals(client.getServerInformation().serverName(), info.get("name").asString());
+    }
+
+    @Test
+    void testRequestRejectsInvalidMethodAndPath() {
+        assertThrows(IllegalArgumentException.class, () -> client.request("HEAD", "info", null));
+        assertThrows(IllegalArgumentException.class, () -> client.request(null, "info", null));
+        assertThrows(IllegalArgumentException.class, () -> client.request("GET", "/", null));
+        assertThrows(IllegalArgumentException.class, () -> client.request("GET", "https://example.com/info", null));
+    }
+
+    @Test
+    void testRequestUnknownRouteThrowsBadRequest() {
+        FederationClientException e = assertThrows(FederationClientException.class,
+            () -> client.request("GET", "jfederation-unknown-route", null));
+        assertEquals(400, e.getStatusCode());
+    }
+
+    @Test
     void testSpecificationContainsCorePaths() {
         JsonNode spec = client.getSpecification();
         JsonNode paths = spec.get("paths");
@@ -228,6 +250,30 @@ class ServerInformationTest extends FederationClientTestBase {
     }
 
     @Test
+    void testServerInformationDeserializesScanFileMembers() {
+        ServerInformation info = Json.readValue("""
+            {
+              "name": "OFD 2.1 Server",
+              "api_version": "2.1",
+              "max_scan_files": 4,
+              "max_scan_file_size": 10485760
+            }
+            """, ServerInformation.class);
+
+        assertEquals(4, info.maxScanFiles());
+        assertEquals(10485760L, info.maxScanFileSize());
+    }
+
+    @Test
+    void testServerPublishesScanFileLimits() {
+        ServerInformation info = client.getServerInformation();
+
+        assertEquals("2.1", info.apiVersion());
+        assertEquals(4, info.maxScanFiles());
+        assertEquals(10485760L, info.maxScanFileSize());
+    }
+
+    @Test
     void testServerInformationDefaultsForMembersNotPublished() {
         ServerInformation info = Json.readValue("{\"name\": \"Legacy Server\", \"api_version\": \"1.0\"}", ServerInformation.class);
 
@@ -239,6 +285,8 @@ class ServerInformationTest extends FederationClientTestBase {
         assertEquals(List.of(), info.concerns());
         assertEquals(List.of(), info.defaultConcerns());
         assertEquals(List.of(), info.searchTypes());
+        assertEquals(0, info.maxScanFiles());
+        assertEquals(0L, info.maxScanFileSize());
 
         assertEquals(-1, Json.readValue("{\"api_version\": \"unknown\"}", ServerInformation.class).getApiMajorVersion());
     }
