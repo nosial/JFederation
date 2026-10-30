@@ -546,7 +546,7 @@ public final class FederationClient implements AutoCloseable
      */
     public ScannedContent scanContent(ContentInput evidence)
     {
-        return scanContent(evidence, null, null, null);
+        return scanContent(evidence, null, (Integer) null, (Float) null);
     }
 
     /**
@@ -558,7 +558,7 @@ public final class FederationClient implements AutoCloseable
      */
     public ScannedContent scanContent(ContentInput evidence, String author)
     {
-        return scanContent(evidence, author, null, null);
+        return scanContent(evidence, author, (Integer) null, (Float) null);
     }
 
     /**
