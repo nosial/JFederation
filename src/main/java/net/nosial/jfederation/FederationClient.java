@@ -30,6 +30,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -324,9 +325,10 @@ public final class FederationClient implements AutoCloseable
             if (!isExpected)
             {
                 String msg = errorMessage + " received response code: " + statusCode;
+                JsonNode errorNode = null;
                 try
                 {
-                    JsonNode errorNode = Json.readTree(responseString);
+                    errorNode = Json.readTree(responseString);
                     if (errorNode.has("message"))
                     {
                         msg = errorMessage + ", " + errorNode.get("message").asString() + " received response code: " + statusCode;
@@ -337,7 +339,7 @@ public final class FederationClient implements AutoCloseable
                     log.debug("Failed to parse error response JSON", e);
                 }
 
-                throw new FederationClientException(msg, statusCode);
+                throw new FederationClientException(msg, statusCode, retryAfter(response, errorNode));
             }
 
             if (responseString.isBlank())
@@ -351,6 +353,37 @@ public final class FederationClient implements AutoCloseable
         {
             throw new FederationClientException(errorMessage + ": " + e.getMessage(), 0, e);
         }
+    }
+
+    /**
+     * Returns the delay after which the server expects to accept a rejected request again (OFD 2.2 "Rate Limiting"),
+     * from the {@code retry_after} member of its error response or else its Retry-After header in the delay-seconds
+     * form. Only HTTP 429 and 503 responses carry a delay.
+     *
+     * @param response The error response
+     * @param errorNode The parsed error response, or {@code null} when it is not JSON
+     * @return The delay, or {@code null} when the response gives none
+     */
+    private static Duration retryAfter(Response response, JsonNode errorNode)
+    {
+        if (response.code() != 429 && response.code() != 503)
+        {
+            return null;
+        }
+
+        JsonNode member = errorNode == null ? null : errorNode.get("retry_after");
+        if (member != null && member.isIntegralNumber() && member.canConvertToLong() && member.longValue() >= 0)
+        {
+            return Duration.ofSeconds(member.longValue());
+        }
+
+        String header = response.header("Retry-After");
+        if (header != null && header.trim().matches("\\d{1,10}"))
+        {
+            return Duration.ofSeconds(Long.parseLong(header.trim()));
+        }
+
+        return null;
     }
 
     /**
@@ -716,6 +749,26 @@ public final class FederationClient implements AutoCloseable
     }
 
     /**
+     * Scans a content input together with its files and the URLs of further files, which the server retrieves itself
+     * (OFD 2.2 "Scanned file URLs"). Only name file URLs to a server whose {@link ServerInformation#apiVersion()} is
+     * 2.2 or later, earlier servers reject them. A server that does not retrieve file URLs, or does not retrieve them
+     * for this client, ignores them.
+     *
+     * @param evidence The content input to scan, which may have no text content when files or file URLs are given
+     * @param author The author entity identifier, or {@code null}
+     * @param files The files of the content input, or {@code null}
+     * @param fileUrls The absolute HTTP or HTTPS URLs of further files of the content input, or {@code null}
+     * @return A {@link ScannedContent} with the scan results
+     * @throws IllegalArgumentException if evidence is null, or it has neither text content, files nor file URLs
+     */
+    public ScannedContent scanContent(ContentInput evidence, String author, List<ScanFile> files, List<String> fileUrls)
+    {
+        return scanContent(List.of(evidence), author, null, null, null,
+            files == null || files.isEmpty() ? null : Map.of(0, files),
+            fileUrls == null || fileUrls.isEmpty() ? null : Map.of(0, fileUrls));
+    }
+
+    /**
      * Scans one or more content inputs together with their files, such as the images of a message (OFD 2.1 "Scanned
      * files"). The request is sent as a {@code multipart/form-data} body. Every server accepts files, a server that
      * does not scan them, or does not scan them for this client, ignores them and scans the rest of the content, so
@@ -740,7 +793,40 @@ public final class FederationClient implements AutoCloseable
     public ScannedContent scanContent(List<ContentInput> evidence, String author, Integer topK, Float threshold,
                                       List<IncidentType> concerns, Map<Integer, List<ScanFile>> files)
     {
-        if (files == null || files.isEmpty())
+        return scanContent(evidence, author, topK, threshold, concerns, files, null);
+    }
+
+    /**
+     * Scans one or more content inputs together with their files and the URLs of further files, which the server
+     * retrieves itself (OFD 2.2 "Scanned file URLs"). Files are sent in a {@code multipart/form-data} body, a request
+     * that only names file URLs is sent as JSON. Every server of version 2.2 accepts file URLs, a server that does not
+     * retrieve them, or does not retrieve them for this client, ignores them, and a file that can not be retrieved is
+     * left out without an error, so the result never depends on knowing whether file URLs are retrieved. Only name file
+     * URLs to a server whose {@link ServerInformation#apiVersion()} is 2.2 or later, earlier servers reject them. The
+     * file index of a file retrieved from a URL follows those of the files of its content input, eg; the first file URL
+     * of an input with two files has the file index 2.
+     *
+     * @param evidence The content inputs to scan (must not be empty)
+     * @param author The author entity identifier, or {@code null}; a telephone number is given as a telephone entity
+     *               in canonical form ({@code <E.164 number>@e164.arpa})
+     * @param topK The maximum number of entity matches to return, or {@code null}
+     * @param threshold The classification confidence threshold, or {@code null}
+     * @param concerns The incident types to assess, which must be among the concerns the server publishes, or
+     *                 {@code null} for the server's default concerns
+     * @param files The files of each content input keyed by its index in {@code evidence}, or {@code null}
+     * @param fileUrls The absolute HTTP or HTTPS URLs of further files of each content input keyed by its index in
+     *                 {@code evidence}, or {@code null}
+     * @return A {@link ScannedContent} with the scan results, whose detections relate to a file by
+     *         {@link Detection#fileIndex()}
+     * @throws IllegalArgumentException if evidence is empty or contains null, the files or file URLs name an index
+     *                                  outside the evidence or carry an empty list, a file URL is blank, the concerns
+     *                                  are empty, or no input contains text content, files or file URLs
+     */
+    public ScannedContent scanContent(List<ContentInput> evidence, String author, Integer topK, Float threshold,
+                                      List<IncidentType> concerns, Map<Integer, List<ScanFile>> files,
+                                      Map<Integer, List<String>> fileUrls)
+    {
+        if ((files == null || files.isEmpty()) && (fileUrls == null || fileUrls.isEmpty()))
         {
             return scanContent(evidence, author, topK, threshold, concerns);
         }
@@ -758,6 +844,16 @@ public final class FederationClient implements AutoCloseable
             }
         }
 
+        if (files == null)
+        {
+            files = Map.of();
+        }
+
+        if (fileUrls == null)
+        {
+            fileUrls = Map.of();
+        }
+
         for (Map.Entry<Integer, List<ScanFile>> entry : files.entrySet())
         {
             if (entry.getKey() == null || entry.getKey() < 0 || entry.getKey() >= evidence.size())
@@ -771,9 +867,21 @@ public final class FederationClient implements AutoCloseable
             }
         }
 
-        // Each content input names the parts that carry its files in its files member, the evidence and concerns
-        // parts carry the JSON text of their values and the other parameters their text
-        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
+        for (Map.Entry<Integer, List<String>> entry : fileUrls.entrySet())
+        {
+            if (entry.getKey() == null || entry.getKey() < 0 || entry.getKey() >= evidence.size())
+            {
+                throw new IllegalArgumentException("File URLs are given for evidence index " + entry.getKey() + " which does not exist");
+            }
+
+            if (entry.getValue() == null || entry.getValue().isEmpty() || entry.getValue().stream().anyMatch(url -> url == null || url.isBlank()))
+            {
+                throw new IllegalArgumentException("The file URLs of evidence index " + entry.getKey() + " must be a non-empty list of URLs");
+            }
+        }
+
+        // Each content input names the parts that carry its files in its files member and the URLs of its other files
+        // in its file_urls member
         List<Map<String, Object>> items = new ArrayList<>();
         Map<String, ScanFile> parts = new LinkedHashMap<>();
         for (int index = 0; index < evidence.size(); index++)
@@ -791,9 +899,30 @@ public final class FederationClient implements AutoCloseable
                 }
                 item.put("files", names);
             }
+
+            List<String> itemFileUrls = fileUrls.get(index);
+            if (itemFileUrls != null)
+            {
+                item.put("file_urls", List.copyOf(itemFileUrls));
+            }
             items.add(item);
         }
 
+        if (parts.isEmpty())
+        {
+            Map<String, Object> params = new LinkedHashMap<>();
+            params.put("evidence", items.size() == 1 ? items.getFirst() : items);
+            if (author != null) params.put("author", author);
+            if (topK != null) params.put("top_k", topK);
+            if (threshold != null) params.put("threshold", threshold);
+            if (concerns != null) params.put("concerns", concernValues(concerns));
+
+            JsonNode node = makeRequest("POST", "scan", params, 200, "Failed to scan content");
+            return Json.mapper().convertValue(node, ScannedContent.class);
+        }
+
+        // The evidence and concerns parts carry the JSON text of their values and the other parameters their text
+        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
         multipartBuilder.addFormDataPart("evidence", null,
             RequestBody.create(Json.writeValueAsString(items.size() == 1 ? items.getFirst() : items), JSON_MEDIA_TYPE));
         if (author != null) multipartBuilder.addFormDataPart("author", author);
@@ -4037,9 +4166,10 @@ public final class FederationClient implements AutoCloseable
             if (statusCode != 200)
             {
                 String msg = "Failed to download attachment, HTTP code: " + statusCode;
+                JsonNode errorNode = null;
                 try
                 {
-                    JsonNode errorNode = Json.readTree(response.body().string());
+                    errorNode = Json.readTree(response.body().string());
                     if (errorNode.has("message") && errorNode.get("message").isString())
                     {
                         msg += ", " + errorNode.get("message").asString();
@@ -4050,7 +4180,7 @@ public final class FederationClient implements AutoCloseable
                     log.debug("Failed to parse attachment download error response JSON", e);
                 }
 
-                throw new FederationClientException(msg, statusCode);
+                throw new FederationClientException(msg, statusCode, retryAfter(response, errorNode));
             }
 
             String filename = attachmentUuid;
@@ -4186,9 +4316,10 @@ public final class FederationClient implements AutoCloseable
             if (!isExpected)
             {
                 String errorMsg = "File upload failed, received response code: " + statusCode;
+                JsonNode errorNode = null;
                 try
                 {
-                    JsonNode errorNode = Json.readTree(responseString);
+                    errorNode = Json.readTree(responseString);
                     if (errorNode.has("message"))
                     {
                         errorMsg = "File upload failed: " + errorNode.get("message").asString() + " (response code: " + statusCode + ")";
@@ -4199,7 +4330,7 @@ public final class FederationClient implements AutoCloseable
                     log.debug("Failed to parse upload error response JSON", e);
                 }
 
-                throw new FederationClientException(errorMsg, statusCode);
+                throw new FederationClientException(errorMsg, statusCode, retryAfter(response, errorNode));
             }
 
             return Json.mapper().convertValue(Json.readTree(responseString), UploadResult.class);
