@@ -917,4 +917,55 @@ class ContentScanTest extends FederationClientTestBase {
         assertEquals(2, detection.fileIndex());
         assertNull(Json.readValue("{\"concern\": \"SPAM\", \"content_index\": 0}", Detection.class).fileIndex());
     }
+
+    private static final String FILE_URL = "https://example.com/media/parcel.jpg";
+
+    @Test
+    void testServerImplementsScanFileUrls() {
+        assertTrue(client.getServerInformation().isApiVersionAtLeast(2, 2),
+            "File URLs require a server implementing OFD 2.2");
+    }
+
+    @Test
+    void testFileUrlOnlyContentKeepsTheNeutralRiskScore() {
+        ScannedContent result = client.scanContent(new ContentInput((String) null), null, null, List.of(FILE_URL));
+
+        assertEquals(50.0, result.riskScore(), 0.0001);
+        assertNull(result.suggestedAction());
+    }
+
+    @Test
+    void testScanContentWithTextAndFileUrls() {
+        ScannedContent result = client.scanContent(new ContentInput("Your parcel is on hold"), null, null,
+            List.of(FILE_URL, "http://example.com/qr.png"));
+
+        assertTrue(result.riskScore() >= 0.0 && result.riskScore() <= 100.0);
+    }
+
+    @Test
+    void testScanContentWithFilesAndFileUrls() {
+        ScannedContent result = client.scanContent(List.of(new ContentInput("First message"), new ContentInput((String) null)),
+            null, null, null, null, Map.of(0, List.of(new ScanFile("parcel.png", PNG))), Map.of(1, List.of(FILE_URL)));
+
+        assertTrue(result.riskScore() >= 0.0 && result.riskScore() <= 100.0);
+    }
+
+    @Test
+    void testScanContentRejectsInvalidFileUrl() {
+        for (String url : List.of("ftp://example.com/file.jpg", "https://user:secret@example.com/file.jpg", "/file.jpg")) {
+            FederationClientException e = assertThrows(FederationClientException.class,
+                () -> client.scanContent(new ContentInput("Hello"), null, null, List.of(url)), url);
+            assertEquals(400, e.getStatusCode(), url);
+        }
+    }
+
+    @Test
+    void testScanContentRejectsFileUrlsOfUnknownContentInput() {
+        assertThrows(IllegalArgumentException.class, () -> client.scanContent(List.of(new ContentInput("Hello")),
+            null, null, null, null, null, Map.of(1, List.of(FILE_URL))));
+        assertThrows(IllegalArgumentException.class, () -> client.scanContent(List.of(new ContentInput("Hello")),
+            null, null, null, null, null, Map.of(0, List.of())));
+        assertThrows(IllegalArgumentException.class, () -> client.scanContent(List.of(new ContentInput("Hello")),
+            null, null, null, null, null, Map.of(0, List.of(" "))));
+    }
 }

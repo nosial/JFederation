@@ -265,10 +265,21 @@ class ServerInformationTest extends FederationClientTestBase {
     }
 
     @Test
+    void testApiMinorVersionIsComparedAsAnInteger() {
+        ServerInformation info = Json.readValue("{\"name\": \"Server\", \"api_version\": \"2.10\"}", ServerInformation.class);
+
+        assertEquals(10, info.getApiMinorVersion());
+        assertTrue(info.isApiVersionAtLeast(2, 2));
+        assertFalse(info.isApiVersionAtLeast(3, 0));
+        assertFalse(Json.readValue("{\"name\": \"Server\", \"api_version\": \"2.1\"}", ServerInformation.class).isApiVersionAtLeast(2, 2));
+        assertEquals(-1, Json.readValue("{\"name\": \"Server\", \"api_version\": \"2\"}", ServerInformation.class).getApiMinorVersion());
+    }
+
+    @Test
     void testServerPublishesScanFileLimits() {
         ServerInformation info = client.getServerInformation();
 
-        assertEquals("2.1", info.apiVersion());
+        assertEquals("2.2", info.apiVersion());
         assertEquals(4, info.maxScanFiles());
         assertEquals(10485760L, info.maxScanFileSize());
     }
