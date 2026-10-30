@@ -7,7 +7,7 @@ heavily based on the original implementation, [FederationLib](https://github.com
 
 ## Features
 
-- Full implementation of the Federated Database standard (OFD 2.1), interacting with any OFD-compliant Federation server
+- Full implementation of the Federated Database standard (OFD 2.2), interacting with any OFD-compliant Federation server
 - Content scanning with entity resolution, classification, risk assessment, content types, concerns, and detections
 - Complete coverage of the server API: operators, records, evidence, reports, blacklist records, file
   attachments, audit logs, search, and server information
@@ -158,9 +158,10 @@ System.out.printf("Server %s, API version %s%n", info.serverName(), info.apiVers
 System.out.printf("Known entities: %d, open reports: %d%n", info.knownEntities(), info.reports());
 ```
 
-A client should check the major version of the interface with `info.getApiMajorVersion()`, this release implements
-OFD 2.1. The server information also publishes what content scanning supports (`scanContentTypes()`, `concerns()`,
-`defaultConcerns()`, and the file limits `maxScanFiles()` and `maxScanFileSize()`), whether URL uploads are accepted
+A client should check the major version of the interface with `info.getApiMajorVersion()`, and use what a later minor
+version introduced only when `info.isApiVersionAtLeast(major, minor)`, this release implements OFD 2.2. The server
+information also publishes what content scanning supports (`scanContentTypes()`, `concerns()`, `defaultConcerns()`,
+and the file limits `maxScanFiles()` and `maxScanFileSize()`), whether URL uploads are accepted
 (`isUrlUploadsAllowed()`), whether telephone entities are public (`publicTelephoneEntities()`) and whether content
 scanned anonymously may be stored (`collectsPublicScanContent()`). Values a newer server publishes that this client
 does not recognize are skipped, and an unrecognized incident type is read as `OTHER`.
@@ -176,7 +177,8 @@ JsonNode status = client.request("GET", "my-plugin/status", null);
 ### Content scanning
 
 Content scanners accept a `ContentInput` or a list of inputs. Each input can carry text, a content type and its
-context, an operator note, tag, confidentiality flag, and metadata; at least one input must contain text or files:
+context, an operator note, tag, confidentiality flag, and metadata; at least one input must contain text, files or file
+URLs:
 
 | Method (omit optional parameters)                                    | Return Type      | Description                                      |
 |----------------------------------------------------------------------|------------------|--------------------------------------------------|
@@ -186,6 +188,8 @@ context, an operator note, tag, confidentiality flag, and metadata; at least one
 | `scanContent(List<ContentInput>, author, topK, threshold, concerns)` | `ScannedContent` | Scans with respect to the given incident types   |
 | `scanContent(ContentInput, author, files)`                           | `ScannedContent` | Scans one input together with its files          |
 | `scanContent(List<ContentInput>, …, concerns, files)`                | `ScannedContent` | Scans inputs with their files, keyed by index    |
+| `scanContent(ContentInput, author, files, fileUrls)`                 | `ScannedContent` | Scans one input with its files and file URLs     |
+| `scanContent(List<ContentInput>, …, concerns, files, fileUrls)`      | `ScannedContent` | Scans inputs with files and file URLs, by index  |
 
 The content type (`TEXT`, `EMAIL`, `SMS`, `WEB_PAGE`, `HOSTNAME` or `URL`) determines the form of the text and the
 keys its context may contain, eg; `subject` and `sender` for an `EMAIL`, `region` for an `SMS`, and the required `url`
@@ -216,6 +220,19 @@ a file names it with `fileIndex()`:
 ScannedContent scan = client.scanContent(
     new ContentInput("Your parcel is on hold", ContentType.SMS, null), "15550123456@e164.arpa",
     List.of(ScanFile.of(Path.of("parcel.jpg"))));
+```
+
+Inputs may also name files by URL, such as the media of an MMS message held by the carrier, for the server to retrieve
+itself (OFD 2.2). A request that only names file URLs is sent as JSON. Only name file URLs to a server for which
+`info.isApiVersionAtLeast(2, 2)`, earlier servers reject them. Every server of version 2.2 accepts them, but may ignore
+them (eg; without authentication, or because it does not retrieve URLs at all) and does not announce whether it
+retrieves them; a file it ignores or can not retrieve is left out without an error. Carry the files yourself when you
+hold them. The `fileIndex()` of a file retrieved from a URL follows those of the files of its input:
+
+```java
+ScannedContent scan = client.scanContent(
+    new ContentInput("Your parcel is on hold", ContentType.SMS, null), "15550123456@e164.arpa",
+    null, List.of("https://mms.example.net/m/7f3a91/parcel.jpg"));
 ```
 
 Here's an example of scanning content and inspecting the classification result:
@@ -460,6 +477,24 @@ try
 catch (FederationClientException e)
 {
     System.out.printf("Request failed with status %d: %s%n", e.getStatusCode(), e.getMessage());
+}
+```
+
+A server may limit the rate of its requests (OFD 2.2 "Rate Limiting"). It rejects a request it did not perform with
+HTTP 429, or HTTP 503 while it is temporarily unavailable, for which `e.isRetryable()` is true, and tells the client
+when to retry: `e.getRetryAfter()` returns that delay, from the `retry_after` member of the error response or its
+Retry-After header. Do not repeat the request, nor send others the server would count against the same limit, before
+the delay has elapsed; afterwards the request may be repeated even when it is not idempotent. When there is no delay,
+as from servers of earlier versions, wait before repeating it and double the wait after each consecutive rejection.
+The client never retries by itself:
+
+```java
+catch (FederationClientException e)
+{
+    if (e.isRetryable() && e.getRetryAfter() != null)
+    {
+        System.out.printf("Rate limited, retry in %d seconds%n", e.getRetryAfter().toSeconds());
+    }
 }
 ```
 
