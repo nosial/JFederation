@@ -5,9 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.1] - Ongoing
+## [2.2.0] - 2026-10-30
 
-This is an ongoing update
+This update brings JFederation up to date with OFD 2.2
+
+### Added
+- Name the files of scanned content by URL for the server to retrieve itself, with
+  `scanContent(ContentInput, author, files, fileUrls)` and `scanContent(List<ContentInput>, author, topK, threshold,
+  concerns, files, fileUrls)`. A request that only names file URLs is sent as JSON, and an input with file URLs may have
+  no text. Only servers of version 2.2 accept file URLs, which they may ignore
+- `ServerInformation.getApiMinorVersion()` and `isApiVersionAtLeast(major, minor)`, comparing versions as integers
+- `FederationClientException.getRetryAfter()` returns the delay of a request rejected with HTTP 429 or 503, from the
+  `retry_after` member of the error response or its Retry-After header (OFD 2.2 rate limiting), and `isRetryable()`
+  whether the status code is 429 or 503. The client does not retry by itself
 
 
 
