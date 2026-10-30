@@ -159,6 +159,47 @@ public record ServerInformation(
     }
 
     /**
+     * Returns the minor version of the interface the server implements, as defined by the OFD versioning section.
+     *
+     * @return The minor version, or -1 when the {@code api_version} cannot be parsed
+     */
+    public int getApiMinorVersion()
+    {
+        if (apiVersion == null)
+        {
+            return -1;
+        }
+
+        String[] parts = apiVersion.split("\\.", 3);
+        if (parts.length < 2)
+        {
+            return -1;
+        }
+
+        try
+        {
+            return Integer.parseInt(parts[1].trim());
+        }
+        catch (NumberFormatException e)
+        {
+            return -1;
+        }
+    }
+
+    /**
+     * Returns whether the server implements the given interface version or a later minor version of the same major
+     * version, so that a client can use what that version introduced, such as the file URLs of scanned content (2.2).
+     *
+     * @param major The major version
+     * @param minor The minor version
+     * @return true if the server reports the same major version and at least the given minor version
+     */
+    public boolean isApiVersionAtLeast(int major, int minor)
+    {
+        return getApiMajorVersion() == major && getApiMinorVersion() >= minor;
+    }
+
+    /**
      * Returns whether the server accepts reports with the {@code ILLEGAL_CONTENT} incident type. A server that
      * declines them rejects such reports with HTTP 403. Servers that predate the {@code allow_illegal_content}
      * member do not publish it and accept every incident type.
